@@ -1,3 +1,27 @@
+# Ignore Bitcoin Core's dirs
+bitcoin-client/  # client dir
+.bitcoin-data/   # data dir - includes whole Bitcoin blockchain!!
+
+# Ignore gathered data dir
+gathered-data/
+
+# Ignore all
+*
+
+# Unignore .py, .sh, .txt
+!*.py
+!*.sh
+!*.txt
+
+# Unignore markup
+!*.ad
+!*.adoc
+!*.md
+!*.MD
+
+# Unignore .gitignore
+!.gitignore
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
