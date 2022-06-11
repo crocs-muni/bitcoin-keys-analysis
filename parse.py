@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import bitcoin, bitcoin.rpc, struct, time, os, json
 
 class Parser:
@@ -236,7 +238,10 @@ class Parser:
     # if start is 0, then the parsing starts at the genesis block
     def process_blocks(self, start, end):
         bitcoin.SelectParams("mainnet")  # we will be using the production blockchain
-        rpc = bitcoin.rpc.RawProxy(btc_conf_file=os.path.join(os.getcwd(), "bitcoin.conf"))  # raw Proxy takes commands in hexa strings instead of structs, that is what we need
+        rpc = bitcoin.rpc.RawProxy(btc_conf_file=os.path.join(os.getcwd(), ".bitcoin-data/bitcoin.conf"))
+        # change path to bitcoin.conf if you have different data structure
+        # raw Proxy takes commands in hexa strings instead of structs, that is what we need
+
         start_time = time.perf_counter()
         for n in range(start, end):
             block_hash = rpc.getblockhash(n)
@@ -252,24 +257,28 @@ class Parser:
                 except (ValueError, IndexError) as e:
                     Parser.failed += 1
                     print("Failed transaction ", transaction_hash)
-                if (len(Parser.saved_data) % 100000) == 0:
-                    name = "data_" + str(n) + ".txt"
+
+                max_key_count = 100   # Maximum key count to store in RAM before flushing to JSON. You can set much more, depends on your RAM size.
+                if (len(Parser.saved_data) % max_key_count) == 0:
+                    name = "gathered-data/data_" + str(n) + ".txt"      # change name here and below if you have different data structure
                     with open(name, 'w') as outfile:
                         json.dump(Parser.saved_data, outfile)
                     Parser.saved_data = {}
-                if ((len(Parser.unmatched_data) % 100000) == 0) and (len(Parser.unmatched_data) != 0):
-                    name = "unmatched_" + str(n) + ".txt"
+
+                if ((len(Parser.unmatched_data) % max_key_count) == 0) and (len(Parser.unmatched_data) != 0):
+                    name = "gathered-data/unmatched_" + str(n) + ".txt"
                     with open(name, 'w') as outfile:
                         json.dump(Parser.unmatched_data, outfile)
                     Parser.unmatched_data = {} 
-        name = "data_" + str((end - 1)) + ".txt"
+
+        name = "gathered-data/data_" + str((end - 1)) + ".txt"
         with open(name, 'w') as outfile:
             json.dump(Parser.saved_data, outfile)
-        name = "unmatched_" + str((end - 1)) + ".txt"
+        name = "gathered-data/unmatched_" + str((end - 1)) + ".txt"
         with open(name, 'w') as outfile:
             json.dump(Parser.unmatched_data, outfile)
         print ("Processed ", Parser.inputs, " transactions and gathered ", Parser.keys, " keys, ", Parser.short, " short keys in ", time.perf_counter() - start_time, " seconds.")
 
 #Example of use:
 parser = Parser()
-parser.process_blocks(1, 10)
+parser.process_blocks(1, 3)
