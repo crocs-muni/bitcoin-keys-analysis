@@ -27,12 +27,14 @@ class Parser:
                     if len(signature) not in (148, 144, 146, 142):
                         signature = "NaN"
                     if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
+                        #print("Key:", suspected_key)
                         if (len(suspected_key) == 66):
                             Parser.short += 1
                         Parser.keys += 1
                         if suspected_key not in Parser.saved_data.keys():
                             Parser.saved_data[suspected_key] = []
                         Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
+                        #print(Parser.saved_data[suspected_key])
                         toreturn = True
         return toreturn
 
@@ -58,9 +60,11 @@ class Parser:
                             signature = "NaN"
                         Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
                         toreturn = True
+                        
         for vin in transaction['vin']:
             if 'scriptSig' in vin.keys():
-                if (len(vin['scriptSig']['hex']) in (148, 144, 146, 142)): # Input contains signature only so we have seen the key for this transaction already
+                if (len(vin['scriptSig']['hex']) in (148, 144, 146, 142)): # Input contains signature only
+                                                                           #    so we have seen the key for this transaction already
                     toreturn = True
         return toreturn
     
@@ -247,6 +251,7 @@ class Parser:
             block_hash = rpc.getblockhash(n)
             block_transactions = rpc.getblock(block_hash)['tx']
             for transaction_hash in block_transactions: # iterating over all transactions in a block
+                #print("Transaction hash:", transaction_hash)
                 Parser.inputs += 1
                 transaction = rpc.getrawtransaction(transaction_hash, True) # Getting transaction in verbose format to get all the needed parsed details
                 try:
@@ -258,27 +263,27 @@ class Parser:
                     Parser.failed += 1
                     print("Failed transaction ", transaction_hash)
 
-                max_key_count = 100   # Maximum key count to store in RAM before flushing to JSON. You can set much more, depends on your RAM size.
-                if (len(Parser.saved_data) % max_key_count) == 0:
-                    name = "gathered-data/data_" + str(n) + ".txt"      # change name here and below if you have different data structure
-                    with open(name, 'w') as outfile:
-                        json.dump(Parser.saved_data, outfile)
-                    Parser.saved_data = {}
+            name = "gathered-data/data_" + str(n) + ".txt"      # change name here and below if you have different data structure
+            with open(name, 'w') as outfile:
+                json.dump(Parser.saved_data, outfile)
+            Parser.saved_data = {}
 
-                if ((len(Parser.unmatched_data) % max_key_count) == 0) and (len(Parser.unmatched_data) != 0):
-                    name = "gathered-data/unmatched_" + str(n) + ".txt"
-                    with open(name, 'w') as outfile:
-                        json.dump(Parser.unmatched_data, outfile)
-                    Parser.unmatched_data = {} 
-
+            if (len(Parser.unmatched_data) != 0):
+                name = "gathered-data/unmatched_" + str(n) + ".txt"
+                with open(name, 'w') as outfile:
+                    json.dump(Parser.unmatched_data, outfile)
+                Parser.unmatched_data = {} 
+                
+        print ("Processed ", Parser.inputs, " transactions and gathered ", Parser.keys, " keys, ", Parser.short, " short keys in ", time.perf_counter() - start_time, " seconds.")
+"""
         name = "gathered-data/data_" + str((end - 1)) + ".txt"
-        with open(name, 'w') as outfile:
+        with open(name, 'a') as outfile:
             json.dump(Parser.saved_data, outfile)
         name = "gathered-data/unmatched_" + str((end - 1)) + ".txt"
-        with open(name, 'w') as outfile:
+        with open(name, 'a') as outfile:
             json.dump(Parser.unmatched_data, outfile)
-        print ("Processed ", Parser.inputs, " transactions and gathered ", Parser.keys, " keys, ", Parser.short, " short keys in ", time.perf_counter() - start_time, " seconds.")
+"""
 
 #Example of use:
 parser = Parser()
-parser.process_blocks(1, 3)
+parser.process_blocks(277069, 277070)
