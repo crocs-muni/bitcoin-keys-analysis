@@ -28,10 +28,10 @@ class Parser:
                         signature = "NaN"
                     if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
                         #print("Key:", suspected_key)
-                        if (len(suspected_key) == 66):
-                            Parser.short += 1
-                        Parser.keys += 1
                         if suspected_key not in Parser.saved_data.keys():
+                            if (len(suspected_key) == 66):
+                                Parser.short += 1
+                            Parser.keys += 1
                             Parser.saved_data[suspected_key] = []
                         Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
                         #print(Parser.saved_data[suspected_key])
@@ -49,10 +49,10 @@ class Parser:
                 if (len(vout['scriptPubKey']['asm'].split(" OP_CHECKSIG")) > 1): #splitting on the instruction, len should be 2"
                     suspected_key = vout['scriptPubKey']['asm'].split(" OP_CHECKSIG")[0]
                     if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                        if (len(suspected_key) == 66):
-                            Parser.short += 1
-                        Parser.keys += 1
                         if suspected_key not in Parser.saved_data.keys():
+                            if (len(suspected_key) == 66):
+                                Parser.short += 1
+                            Parser.keys += 1
                             Parser.saved_data[suspected_key] = []
                         if ('scriptSig' in transaction['vin'][0].keys()) and (len(transaction['vin'][0]['scriptSig']['hex']) in (148, 144, 146, 142)):
                             signature = transaction['vin'][0]['scriptSig']['hex']
@@ -85,10 +85,10 @@ class Parser:
                             suspected_key = redeem_script[:-2]
                         signature = vin['scriptSig']['asm'].split("[ALL] ")[0].split(" ")[1] # Skipping an extra zero here that was added to BTC script due to bugs
                         if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                            if (suspected_key[1] in ('2', '3')):
-                                Parser.short += 1
-                            Parser.keys += 1
                             if suspected_key not in Parser.saved_data.keys():
+                                if (suspected_key[1] in ('2', '3')):
+                                    Parser.short += 1
+                                Parser.keys += 1
                                 Parser.saved_data[suspected_key] = []
                             if len(signature) not in (148, 144, 146, 142):
                                 signature = "NaN"
@@ -108,15 +108,15 @@ class Parser:
                                 suspected_key = redeem_script[2:(key_len + 1)*2]
                                 redeem_script = redeem_script[(2 + (key_len*2)):]
                                 if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                                   if (len(suspected_key) == 66):
-                                       Parser.short += 1
-                                   Parser.keys += 1
-                                   if suspected_key not in Parser.saved_data.keys():
-                                       Parser.saved_data[suspected_key] = []
-                                   if len(signature) not in (148, 144, 146, 142):
-                                       signature = "NaN"
-                                   Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
-                                   toreturn = True
+                                    if suspected_key not in Parser.saved_data.keys():
+                                        if (len(suspected_key) == 66):
+                                            Parser.short += 1
+                                        Parser.keys += 1
+                                        Parser.saved_data[suspected_key] = []
+                                    if len(signature) not in (148, 144, 146, 142):
+                                        signature = "NaN"
+                                    Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
+                                    toreturn = True
                         else:
                             sigs = []
                             for j in range(num_sigs):
@@ -129,10 +129,10 @@ class Parser:
                                 suspected_key = redeem_script[2:(key_len + 1)*2]
                                 redeem_script = redeem_script[(2 + (key_len*2)):]
                                 if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                                    if (len(suspected_key) == 66):
-                                        Parser.short += 1
-                                    Parser.keys += 1
                                     if suspected_key not in Parser.unmatched_data.keys():
+                                        if (len(suspected_key) == 66):
+                                            Parser.short += 1
+                                        Parser.keys += 1
                                         Parser.unmatched_data[suspected_key] = []
                                     Parser.unmatched_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signatures' : sigs})
                                     toreturn = True
@@ -152,10 +152,10 @@ class Parser:
                 if (len(vin['txinwitness']) > 1): 
                     suspected_key = vin['txinwitness'][-1]
                     if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                        if (len(suspected_key) == 66):
-                            Parser.short += 1
-                        Parser.keys += 1
                         if suspected_key not in Parser.saved_data.keys():
+                            if (len(suspected_key) == 66):
+                                Parser.short += 1
+                            Parser.keys += 1
                             Parser.saved_data[suspected_key] = []
                         if len(signature) not in (148, 144, 146, 142):
                             signature = "NaN"
@@ -164,10 +164,10 @@ class Parser:
                 if (not toreturn) and (len(vin['txinwitness']) > 2):
                     suspected_key = vin['txinwitness'][-2] #some transactions have signature, key and then something else on the last position, small fraction of all, no idea why
                     if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                        if (len(suspected_key) == 66):
-                            Parser.short += 1
-                        Parser.keys += 1
                         if suspected_key not in Parser.saved_data.keys():
+                            if (len(suspected_key) == 66):
+                                Parser.short += 1
+                            Parser.keys += 1
                             Parser.saved_data[suspected_key] = []
                         if len(signature) not in (148, 144, 146, 142):
                             signature = "NaN"
@@ -187,10 +187,10 @@ class Parser:
                         signature = vin['txinwitness'][1] # Skipping the empty item
                         suspected_key = redeem_script[:-2]
                         if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                            if (suspected_key[1] in ('2', '3')):
-                                Parser.short += 1
-                            Parser.keys += 1
                             if suspected_key not in Parser.saved_data.keys():
+                                if (suspected_key[1] in ('2', '3')):
+                                    Parser.short += 1
+                                Parser.keys += 1
                                 Parser.saved_data[suspected_key] = []
                             if len(signature) not in (148, 144, 146, 142):
                                 signature = "NaN"
@@ -208,15 +208,15 @@ class Parser:
                                 suspected_key = redeem_script[2:(key_len + 1)*2]
                                 redeem_script = redeem_script[(2 + (key_len*2)):]
                                 if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                                   if (len(suspected_key) == 66):
-                                       Parser.short += 1
-                                   Parser.keys += 1
-                                   if suspected_key not in Parser.saved_data.keys():
-                                       Parser.saved_data[suspected_key] = []
-                                   if len(signature) not in (148, 144, 146, 142):
-                                       signature = "NaN"
-                                   Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
-                                   toreturn = True
+                                    if suspected_key not in Parser.saved_data.keys():
+                                        if (len(suspected_key) == 66):
+                                            Parser.short += 1
+                                        Parser.keys += 1
+                                        Parser.saved_data[suspected_key] = []
+                                    if len(signature) not in (148, 144, 146, 142):
+                                        signature = "NaN"
+                                    Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
+                                    toreturn = True
                         else:
                             sigs = []
                             for j in range(num_sigs):
@@ -225,17 +225,17 @@ class Parser:
                                     signature = "NaN"
                                 sigs.append(signature)
                             for i in range(num_keys):
-                               key_len = int(redeem_script[:2], 16)
-                               suspected_key = redeem_script[2:(key_len + 1)*2]
-                               redeem_script = redeem_script[(2 + (key_len*2)):]
-                               if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                                   if (len(suspected_key) == 66):
-                                       Parser.short += 1
-                                   Parser.keys += 1
-                                   if suspected_key not in Parser.unmatched_data.keys():
-                                       Parser.unmatched_data[suspected_key] = []
-                                   Parser.unmatched_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signatures' : sigs})
-                                   toreturn = True
+                                key_len = int(redeem_script[:2], 16)
+                                suspected_key = redeem_script[2:(key_len + 1)*2]
+                                redeem_script = redeem_script[(2 + (key_len*2)):]
+                                if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
+                                    if suspected_key not in Parser.unmatched_data.keys():
+                                        if (len(suspected_key) == 66):
+                                            Parser.short += 1
+                                        Parser.keys += 1
+                                        Parser.unmatched_data[suspected_key] = []
+                                    Parser.unmatched_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signatures' : sigs})
+                                    toreturn = True
         return toreturn
     
     # Main functions, takes natural numbers start, end which are the indexes of Bitcoin blocks
@@ -275,14 +275,6 @@ class Parser:
                 Parser.unmatched_data = {} 
                 
         print ("Processed ", Parser.inputs, " transactions and gathered ", Parser.keys, " keys, ", Parser.short, " short keys in ", time.perf_counter() - start_time, " seconds.")
-"""
-        name = "gathered-data/data_" + str((end - 1)) + ".txt"
-        with open(name, 'a') as outfile:
-            json.dump(Parser.saved_data, outfile)
-        name = "gathered-data/unmatched_" + str((end - 1)) + ".txt"
-        with open(name, 'a') as outfile:
-            json.dump(Parser.unmatched_data, outfile)
-"""
 
 #Example of use:
 parser = Parser()
