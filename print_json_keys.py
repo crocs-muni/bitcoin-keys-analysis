@@ -2,6 +2,7 @@
 
 import sys
 import json
+import math
 
 YELLOW='\033[1;33m'
 PURPLE='\033[0;35m'
@@ -27,13 +28,14 @@ for key in dict.keys():
     tx_count = 0
     for tx in dict[key]:
         tx_count += 1
-        draw_pipeline(key_count // 10 + len(". K"))
+        spaces = math.ceil(math.log(key_count, 10)) + len(". K")
+        draw_pipeline(spaces)
         print(tx_count, ". Transaction: ", PURPLE, tx["ID"], NO_COLOR, sep = '')
         """ # Uncomment to print time and signature
         draw_pipeline(key_count // 10 + len(". K") + tx_count//10 + len(". T") + len("|--> "))
         print("Time: ", tx["time"], sep = '')
-        draw_pipeline(key_count // 10 + len(". K") + tx_count//10 + len(". T") + len("|--> "))
-        print("Sigature: ", tx["signature"], sep = '')
         """
+        draw_pipeline(spaces +  len(". T"))
+        print("Sigature: ", tx["signature"], sep = '')
 
 exit(0)
