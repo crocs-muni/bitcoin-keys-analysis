@@ -35,7 +35,12 @@ for key in dict.keys():
         draw_pipeline(key_count // 10 + len(". K") + tx_count//10 + len(". T") + len("|--> "))
         print("Time: ", tx["time"], sep = '')
         """
-        draw_pipeline(spaces +  len(". T"))
-        print("Sigature: ", tx["signature"], sep = '')
+        if "signature" in tx.keys():
+            draw_pipeline(spaces +  len(". T"))
+            print("Signature: ", tx["signature"], sep = '')
+        elif "signatures" in tx.keys():
+            for i in range(len(tx["signatures"])):
+                draw_pipeline(spaces + len(". T"))
+                print(i+1, ". Signature: " , tx["signatures"][i], sep = '')
 
 exit(0)
