@@ -3,7 +3,7 @@ This file is to write down some [potentional] issues and things to do later. Jus
 ------------------------------------------------------------------------------------------------------------------------------
 CHANGE: Deleted copy&paste in p2wpk function and renamed it to p2wpkh.
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: Remember to deal with umatched_smth.txt files. As for me, those are unnecessary.
+NOTE: Remember to deal with unmatched_smth.txt files. As for me, those are needless.
 ------------------------------------------------------------------------------------------------------------------------------
 ISSUE: In p2sh signatures (at least) last two letters get cut off for some reason, thus len(siganture) is 140 and is not accepted and replaced by NaN.
     Example:
@@ -35,6 +35,4 @@ NOTE: If a key is in multiple inputs within one tx, it's being unreasonably adde
 NOTE2: That's not unreasonably - those are from different inputs, so have different signatures.
 
 NOTE3: It's okey and desirable to save pubkeys and txid only, but that's not urgent, so by now, I don't cut the provided script.
-------------------------------------------------------------------------------------------------------------------------------
-<SOLVED> NOTE: There are 595 tx's in block no. 277069. Script parse.py extracted only 7(!) keys?? Problem with recognizing keys from unlocking script or problem with dumping into a file? Going to investigate tommorow.
 ------------------------------------------------------------------------------------------------------------------------------
