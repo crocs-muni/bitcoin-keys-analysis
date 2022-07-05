@@ -1,6 +1,10 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going.
 
 ------------------------------------------------------------------------------------------------------------------------------
+CHANGE: Deleted copy&paste in p2wpk function and renamed it to p2wpkh.
+------------------------------------------------------------------------------------------------------------------------------
+NOTE: Remember to deal with umatched_smth.txt files. As for me, those are unnecessary.
+------------------------------------------------------------------------------------------------------------------------------
 ISSUE: In p2sh signatures (at least) last two letters get cut off for some reason, thus len(siganture) is 140 and is not accepted and replaced by NaN.
     Example:
         Txid: 00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8
@@ -31,8 +35,6 @@ NOTE: If a key is in multiple inputs within one tx, it's being unreasonably adde
 NOTE2: That's not unreasonably - those are from different inputs, so have different signatures.
 
 NOTE3: It's okey and desirable to save pubkeys and txid only, but that's not urgent, so by now, I don't cut the provided script.
-------------------------------------------------------------------------------------------------------------------------------
-CHANGE: Line no. 99 - I believe, that as it was, the script was not able to process more that 9 keys in CHECK_MULTISIG. So I've changed it.
 ------------------------------------------------------------------------------------------------------------------------------
 <SOLVED> NOTE: There are 595 tx's in block no. 277069. Script parse.py extracted only 7(!) keys?? Problem with recognizing keys from unlocking script or problem with dumping into a file? Going to investigate tommorow.
 ------------------------------------------------------------------------------------------------------------------------------

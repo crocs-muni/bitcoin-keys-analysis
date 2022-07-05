@@ -147,25 +147,13 @@ class Parser:
     # We do not care about scriptPubKey or Sigscript in this case
     # Segwith contains signature and public key
     # returns true if key was extracted
-    def process_transaction_p2wpk(self, transaction):
+    def process_transaction_p2wpkh(self, transaction):
         toreturn = False
         for vin in transaction['vin']:
             if 'txinwitness' in vin.keys():
                 signature = vin['txinwitness'][0]
                 if (len(vin['txinwitness']) > 1): 
-                    suspected_key = vin['txinwitness'][-1]
-                    if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                        if suspected_key not in Parser.saved_data.keys():
-                            if (len(suspected_key) == 66):
-                                Parser.short += 1
-                            Parser.keys += 1
-                            Parser.saved_data[suspected_key] = []
-                        if len(signature) not in (148, 144, 146, 142):
-                            signature = "NaN"
-                        Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
-                        toreturn = True
-                if (not toreturn) and (len(vin['txinwitness']) > 2):
-                    suspected_key = vin['txinwitness'][-2] #some transactions have signature, key and then something else on the last position, small fraction of all, no idea why
+                    suspected_key = vin['txinwitness'][1]
                     if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
                         if suspected_key not in Parser.saved_data.keys():
                             if (len(suspected_key) == 66):
@@ -258,7 +246,7 @@ class Parser:
                 transaction = rpc.getrawtransaction(transaction_hash, True) # Getting transaction in verbose format to get all the needed parsed details
                 try:
                     # Running all extractors, last check is if transaction is new version of mining and contains no public key, only hash of miner pub key
-                    if not (Parser.process_transaction_p2pkh(self, transaction) or Parser.process_transaction_p2sh(self, transaction) or Parser.process_transaction_p2wpk(self, transaction) or Parser.process_transaction_p2wsh(self, transaction) or Parser.process_transaction_p2pk(self, transaction) or ('coinbase' in transaction['vin'][0].keys())):
+                    if not (Parser.process_transaction_p2pkh(self, transaction) or Parser.process_transaction_p2sh(self, transaction) or Parser.process_transaction_p2wpkh(self, transaction) or Parser.process_transaction_p2wsh(self, transaction) or Parser.process_transaction_p2pk(self, transaction) or ('coinbase' in transaction['vin'][0].keys())):
                         Parser.failed += 1
                         print("Failed transaction ", transaction_hash)
                 except (ValueError, IndexError) as e:
@@ -280,4 +268,4 @@ class Parser:
 
 #Example of use:
 parser = Parser()
-parser.process_blocks(405987, 405988)
+parser.process_blocks(739000, 739001)
