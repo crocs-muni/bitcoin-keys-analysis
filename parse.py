@@ -188,9 +188,9 @@ class Parser:
                             Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
                             toreturn = True
                     if (redeem_script[-1] == 'e') and (redeem_script[-2] == 'a'): # Found checkmultisig instruction so multiple keys key will be in front of it"
-                        num_sigs = int(redeem_script[1]) # Checking the number of signatures present
+                        num_sigs = int(redeem_script[1], 16) # Checking the number of signatures present
                         redeem_script = redeem_script[2:-2] # Cutting instructions at beginning and end"
-                        num_keys = int(redeem_script[-1]) # Bit hacky but should work, format should be num of verifications required pubkey1 ... pubkeyn num of all pubkeys
+                        num_keys = int(redeem_script[-1], 16) # Bit hacky but should work, format should be num of verifications required pubkey1 ... pubkeyn num of all pubkeys
                         redeem_script = redeem_script[:-2] # Cutting counter at beginning and end"
                         if (num_sigs == num_keys):
                             for i in range(num_keys):

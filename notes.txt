@@ -1,7 +1,18 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going.
 
 ------------------------------------------------------------------------------------------------------------------------------
-CHANGE: Deleted copy&paste in p2wpk function and renamed it to p2wpkh.
+NOTE: Copy&paste in parsing serialized script. And in other parts of parse.py as well, but here that's the most critical.
+------------------------------------------------------------------------------------------------------------------------------
+ISSUE: Script can not parse P2SH and P2WSH transactions, where:
+    1) OP_CHECKSIG or OP_CHECKMULTISIG are not at the end. Example (txid):
+        208a95aff0c4243fdc7c610b700e1eb6a19bb786f3d96d79ecd410183f067687
+        505a42d01dd26f002d5c1ba52debb15cc88f315740a239c70be996285ccccb6d
+    2) Public key is before OP_ENDIF OP_CHECKSIG. Example (txid):
+        9499b951301c14983d29b762539b22e3a2c1a59a196671172a27fe0e0a8e3bda
+    3) And likely more..
+
+Full rewrite of parsing serialized script is needed in order to solve it.
+However, this is only a small percent of transactions, and this is not urgent, so I will try to deal with it later.
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Remember to deal with unmatched_smth.txt files. As for me, those are needless.
 ------------------------------------------------------------------------------------------------------------------------------
@@ -15,7 +26,7 @@ Looks like the problem is not in the script.. It's with either BitcoinCore or bl
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: If a key is in multiple inputs within one tx, it's being unreasonably added multiple times (key 4 from block no. 277069)
 
-1. Key: [1;33m021189ee73effe47b8c468980357f9ab727495465243fa6db6c9805b014b8208c3[0m
+. Key: [1;33m021189ee73effe47b8c468980357f9ab727495465243fa6db6c9805b014b8208c3[0m
    |--> 1. Transaction: [0;35m1e48cae24de9ed5989c73e62528632c7336d2228560ac469fa5724c3c7b79cb8[0m
 2. Key: [1;33m02c022e4f9f5556ba6df24d8badeff36b7b8269ace4d04c551761dcd32f09ce26b[0m
    |--> 1. Transaction: [0;35m1e48cae24de9ed5989c73e62528632c7336d2228560ac469fa5724c3c7b79cb8[0m
