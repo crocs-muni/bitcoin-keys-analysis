@@ -132,12 +132,12 @@ class Parser:
                                 suspected_key = redeem_script[2:(key_len*2) + 2]
                                 redeem_script = redeem_script[((key_len*2) + 2):]
                                 if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                                    if suspected_key not in Parser.saved_data.keys():
+                                    if suspected_key not in Parser.unmatched_data.keys():
                                         if (len(suspected_key) == 66):
                                             Parser.short += 1
                                         Parser.keys += 1
-                                        Parser.saved_data[suspected_key] = []
-                                    Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signatures' : sigs})
+                                        Parser.unmatched_data[suspected_key] = []
+                                    Parser.unmatched_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signatures' : sigs})
                                     toreturn = True                            
 
 

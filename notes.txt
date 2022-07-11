@@ -1,9 +1,11 @@
-This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going.
+This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" asap.
 
+------------------------------------------------------------------------------------------------------------------------------
+NOTE: Work around different sighash flags ([ALL], but SIGHASH_ANYONECANPAY as well)
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Copy&paste in parsing serialized script. And in other parts of parse.py as well, but here that's the most critical.
 ------------------------------------------------------------------------------------------------------------------------------
-ISSUE: Script can not parse P2SH and P2WSH transactions, where:
+NOTE: Script can not parse P2SH and P2WSH transactions, where:
     1) OP_CHECKSIG or OP_CHECKMULTISIG are not at the end. Example (txid):
         208a95aff0c4243fdc7c610b700e1eb6a19bb786f3d96d79ecd410183f067687
         505a42d01dd26f002d5c1ba52debb15cc88f315740a239c70be996285ccccb6d
@@ -12,9 +14,10 @@ ISSUE: Script can not parse P2SH and P2WSH transactions, where:
     3) And likely more..
 
 Full rewrite of parsing serialized script is needed in order to solve it.
-However, this is only a small percent of transactions, and this is not urgent, so I will try to deal with it later.
+However, this is only a small percent of transactions, and this is not urgent, so I will try to deal with it later, if it turns out to be reasonable to do..
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: Remember to deal with unmatched_smth.txt files. As for me, those are needless.
+<SOLVED> NOTE: Remember to deal with unmatched_smth.txt files. As for me, those are needless.
+NOTE2: Reverted it back, because analysis part is (I guess) implemented expecting this file.
 ------------------------------------------------------------------------------------------------------------------------------
 ISSUE: In p2sh signatures (at least) last two letters get cut off for some reason, thus len(siganture) is 140 and is not accepted and replaced by NaN.
     Example:
@@ -23,10 +26,12 @@ ISSUE: In p2sh signatures (at least) last two letters get cut off for some reaso
         Actual signature:               304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e501
 
 Looks like the problem is not in the script.. It's with either BitcoinCore or blockstream.info!
+NOTE: Last two letters (last byte) was always 0x01. It was replaced by [ALL], so everythung was fine.
+TODO: Add length of 140 (70 bytes) to possible options.
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: If a key is in multiple inputs within one tx, it's being unreasonably added multiple times (key 4 from block no. 277069)
 
-. Key: [1;33m021189ee73effe47b8c468980357f9ab727495465243fa6db6c9805b014b8208c3[0m
+1. Key: [1;33m021189ee73effe47b8c468980357f9ab727495465243fa6db6c9805b014b8208c3[0m
    |--> 1. Transaction: [0;35m1e48cae24de9ed5989c73e62528632c7336d2228560ac469fa5724c3c7b79cb8[0m
 2. Key: [1;33m02c022e4f9f5556ba6df24d8badeff36b7b8269ace4d04c551761dcd32f09ce26b[0m
    |--> 1. Transaction: [0;35m1e48cae24de9ed5989c73e62528632c7336d2228560ac469fa5724c3c7b79cb8[0m
