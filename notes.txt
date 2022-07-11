@@ -1,5 +1,7 @@
-This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" asap.
+This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
+------------------------------------------------------------------------------------------------------------------------------
+NOTE: Implementation of parsing p2tr seems to be so easy, but I'm not shure about relevance of pubkeys, which would be gathered from this type of transactions, as the are in most cases <<tweaked>> :/ .
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Work around different sighash flags ([ALL], but SIGHASH_ANYONECANPAY as well)
 ------------------------------------------------------------------------------------------------------------------------------
@@ -15,16 +17,6 @@ NOTE: Script can not parse P2SH and P2WSH transactions, where:
 
 Full rewrite of parsing serialized script is needed in order to solve it.
 However, this is only a small percent of transactions, and this is not urgent, so I will try to deal with it later, if it turns out to be reasonable to do..
-------------------------------------------------------------------------------------------------------------------------------
-<SOLVED> ISSUE: In p2sh signatures (at least) last two letters get cut off for some reason, thus len(siganture) is 140 and is not accepted and replaced by NaN.
-    Example:
-        Txid: 00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8
-        Script's guess of a signature:  304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e5
-        Actual signature:               304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e501
-
-Looks like the problem is not in the script.. It's with either BitcoinCore or blockstream.info!
-NOTE: Last two letters (last byte) was always 0x01. It was replaced by [ALL], so everythung was fine.
-NOTE2: Added length of 140 (70 bytes) to possible options. As for me, constant with possible lengths would be better, but ok, I leave the original style.
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: If a key is in multiple inputs within one tx, it's being unreasonably added multiple times (key 4 from block no. 277069)
 
@@ -47,5 +39,7 @@ NOTE: If a key is in multiple inputs within one tx, it's being unreasonably adde
 
 NOTE2: That's not unreasonably - those are from different inputs, so have different signatures.
 
-NOTE3: It's okey and desirable to save pubkeys and txid only, but that's not urgent, so by now, I don't cut the provided script.
-------------------------------------------------------------------------------------------------------------------------------
+TODO: Save pubkeys and txid only - decomposite to a dedicated function? Something like "flush_to_file" seems to be a good idea for me.
++
+TODO: Revert similar size of gathered data files.
+-----------------------------------------------------------------------------------------------------------------------------
