@@ -24,7 +24,7 @@ class Parser:
                     else:
                         suspected_key = vin['scriptSig']['asm'].split(" ")[1] # Sometimes they are separated by space for some reason, rather rare
                         signature = vin['scriptSig']['asm'].split(" ")[0]
-                    if len(signature) not in (148, 144, 146, 142):
+                    if len(signature) not in (148, 146, 144, 142, 140):
                         signature = "NaN"
                     if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
                         #print("Key:", suspected_key)
@@ -53,7 +53,7 @@ class Parser:
                                 Parser.short += 1
                             Parser.keys += 1
                             Parser.saved_data[suspected_key] = []
-                        if ('scriptSig' in transaction['vin'][0].keys()) and (len(transaction['vin'][0]['scriptSig']['hex']) in (148, 144, 146, 142)):
+                        if ('scriptSig' in transaction['vin'][0].keys()) and (len(transaction['vin'][0]['scriptSig']['hex']) in (148, 146, 144, 142, 140)):
                             signature = transaction['vin'][0]['scriptSig']['hex']
                         else:
                             signature = "NaN"
@@ -62,7 +62,7 @@ class Parser:
                         
         for vin in transaction['vin']:
             if 'scriptSig' in vin.keys():
-                if (len(vin['scriptSig']['hex']) in (148, 144, 146, 142)): # Input contains signature only
+                if (len(vin['scriptSig']['hex']) in (148, 146, 144, 142, 140)): # Input contains signature only
                                                                            #    so we have seen the key for this transaction already
                     toreturn = True
         return toreturn
@@ -89,7 +89,7 @@ class Parser:
                                     Parser.short += 1
                                 Parser.keys += 1
                                 Parser.saved_data[suspected_key] = []
-                            if len(signature) not in (148, 144, 146, 142):
+                            if len(signature) not in (148, 146, 144, 142, 140):
                                 signature = "NaN"
                             Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
                             toreturn = True
@@ -114,7 +114,7 @@ class Parser:
                                             Parser.short += 1
                                         Parser.keys += 1
                                         Parser.saved_data[suspected_key] = []
-                                    if len(signature) not in (148, 144, 146, 142):
+                                    if len(signature) not in (148, 146, 144, 142, 140):
                                         signature = "NaN"
                                     Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
                                     toreturn = True
@@ -124,7 +124,7 @@ class Parser:
                                 signature = vin['scriptSig']['asm'].replace("[ALL]","").split(" ")[j+1]
                                 #print(len(signature))  See notes.txt
                                 #print(signature)
-                                if len(signature) not in (148, 144, 146, 142):
+                                if len(signature) not in (148, 146, 144, 142, 140):
                                     signature = "NaN"
                                 sigs.append(signature)
                             for i in range(num_keys):
@@ -160,7 +160,7 @@ class Parser:
                                 Parser.short += 1
                             Parser.keys += 1
                             Parser.saved_data[suspected_key] = []
-                        if len(signature) not in (148, 144, 146, 142):
+                        if len(signature) not in (148, 146, 144, 142, 140):
                             signature = "NaN"
                         Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
                         toreturn = True
@@ -183,7 +183,7 @@ class Parser:
                                     Parser.short += 1
                                 Parser.keys += 1
                                 Parser.saved_data[suspected_key] = []
-                            if len(signature) not in (148, 144, 146, 142):
+                            if len(signature) not in (148, 146, 144, 142, 140):
                                 signature = "NaN"
                             Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
                             toreturn = True
@@ -204,7 +204,7 @@ class Parser:
                                             Parser.short += 1
                                         Parser.keys += 1
                                         Parser.saved_data[suspected_key] = []
-                                    if len(signature) not in (148, 144, 146, 142):
+                                    if len(signature) not in (148, 146, 144, 142, 140):
                                         signature = "NaN"
                                     Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
                                     toreturn = True
@@ -212,7 +212,7 @@ class Parser:
                             sigs = []
                             for j in range(num_sigs):
                                 signature = vin['txinwitness'][j + 1]
-                                if len(signature) not in (148, 144, 146, 142):
+                                if len(signature) not in (148, 146, 144, 142, 140):
                                     signature = "NaN"
                                 sigs.append(signature)
                             for i in range(num_keys):

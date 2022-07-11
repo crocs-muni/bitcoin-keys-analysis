@@ -16,10 +16,7 @@ NOTE: Script can not parse P2SH and P2WSH transactions, where:
 Full rewrite of parsing serialized script is needed in order to solve it.
 However, this is only a small percent of transactions, and this is not urgent, so I will try to deal with it later, if it turns out to be reasonable to do..
 ------------------------------------------------------------------------------------------------------------------------------
-<SOLVED> NOTE: Remember to deal with unmatched_smth.txt files. As for me, those are needless.
-NOTE2: Reverted it back, because analysis part is (I guess) implemented expecting this file.
-------------------------------------------------------------------------------------------------------------------------------
-ISSUE: In p2sh signatures (at least) last two letters get cut off for some reason, thus len(siganture) is 140 and is not accepted and replaced by NaN.
+<SOLVED> ISSUE: In p2sh signatures (at least) last two letters get cut off for some reason, thus len(siganture) is 140 and is not accepted and replaced by NaN.
     Example:
         Txid: 00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8
         Script's guess of a signature:  304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e5
@@ -27,7 +24,7 @@ ISSUE: In p2sh signatures (at least) last two letters get cut off for some reaso
 
 Looks like the problem is not in the script.. It's with either BitcoinCore or blockstream.info!
 NOTE: Last two letters (last byte) was always 0x01. It was replaced by [ALL], so everythung was fine.
-TODO: Add length of 140 (70 bytes) to possible options.
+NOTE2: Added length of 140 (70 bytes) to possible options. As for me, constant with possible lengths would be better, but ok, I leave the original style.
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: If a key is in multiple inputs within one tx, it's being unreasonably added multiple times (key 4 from block no. 277069)
 
