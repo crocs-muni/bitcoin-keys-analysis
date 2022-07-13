@@ -21,6 +21,8 @@ Full rewrite of parsing serialized script is needed in order to solve it.
 However, this is only a small percent of transactions, and this is not urgent, so I will try to deal with it later, if it turns out to be reasonable to do..
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: I don't think that just removing parts of the script, which collect signatures, is a good idea. If there is no reasonable way to get signature with knowledge of public key and txid, then I wouldn't cut off this parts. If there is, we should rewrite this parts to functions which take public key and txid and return the signature, so that we'd have an api we can use later. Have to think on it more..
+
+TODO: Try to move exctraction of signatures to dedicated functions and diff it with current version.
 -----------------------------------------------------------------------------------------------------------------------------
-NOTE: Change print_json.py so that it can go through multiple files.
+<SOLVED> NOTE: Change print_json.py so that it can go through multiple files.
 -----------------------------------------------------------------------------------------------------------------------------
