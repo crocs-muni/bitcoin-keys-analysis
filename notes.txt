@@ -1,9 +1,11 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: Implementation of parsing p2tr seems to be so easy, but I'm not shure about relevance of pubkeys, which would be gathered from this type of transactions, as the are in most cases <<tweaked>> :/ .
+NOTE: I have some doubts about the if statement, where all extractors run.. Wouldn't it be better, if extractors ran on a concrete input, rather than whole transaction? Does Python run all functions in if(), if result is already known??
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: Work around different sighash flags ([ALL], but SIGHASH_ANYONECANPAY as well)
+NOTE: Implementation of parsing p2tr seems to be so easy, but I'm not shure about relevance of pubkeys, which would be gathered from this type of transactions, as they are in most cases <<tweaked>> :/ .
+------------------------------------------------------------------------------------------------------------------------------
+NOTE: Work around different sighash flags (now only [ALL], but SIGHASH_ANYONECANPAY and others should be there as well).
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Copy&paste in parsing serialized script. And in other parts of parse.py as well, but here that's the most critical.
 ------------------------------------------------------------------------------------------------------------------------------
@@ -18,28 +20,9 @@ NOTE: Script can not parse P2SH and P2WSH transactions, where:
 Full rewrite of parsing serialized script is needed in order to solve it.
 However, this is only a small percent of transactions, and this is not urgent, so I will try to deal with it later, if it turns out to be reasonable to do..
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: If a key is in multiple inputs within one tx, it's being unreasonably added multiple times (key 4 from block no. 277069)
-
-1. Key: [1;33m021189ee73effe47b8c468980357f9ab727495465243fa6db6c9805b014b8208c3[0m
-   |--> 1. Transaction: [0;35m1e48cae24de9ed5989c73e62528632c7336d2228560ac469fa5724c3c7b79cb8[0m
-2. Key: [1;33m02c022e4f9f5556ba6df24d8badeff36b7b8269ace4d04c551761dcd32f09ce26b[0m
-   |--> 1. Transaction: [0;35m1e48cae24de9ed5989c73e62528632c7336d2228560ac469fa5724c3c7b79cb8[0m
-3. Key: [1;33m020e06644ca2cf726da2557acb33c041c1eac3bc671905e37147de1404699fd856[0m
-   |--> 1. Transaction: [0;35m1e48cae24de9ed5989c73e62528632c7336d2228560ac469fa5724c3c7b79cb8[0m
-4. Key: [1;33m02330ed7b753cb96b74b5f11d409dae5b63baaf4aa1f87d942a8eba2cf4aa7cf71[0m
-   |--> 1. Transaction: [0;35m48180afa93d5dd67ac0dbc441e86e4c202816ce4c0db150f9f43c5937c2e8bf4[0m
-   |--> 2. Transaction: [0;35m48180afa93d5dd67ac0dbc441e86e4c202816ce4c0db150f9f43c5937c2e8bf4[0m
-   |--> 3. Transaction: [0;35m48180afa93d5dd67ac0dbc441e86e4c202816ce4c0db150f9f43c5937c2e8bf4[0m
-5. Key: [1;33m03a35b2533ad719c38ea8071d5b9944b27f771a549e579a122ed76ee4732c01284[0m
-   |--> 1. Transaction: [0;35m93beb29784da3bbabc41011ce37dce4146d7541b9de2b68915b4185c1d9f8c8a[0m
-6. Key: [1;33m03804f31ca796cd3dc92e8d6763c84989c6e0d0236275e7dcebe5dc010fcb35725[0m
-   |--> 1. Transaction: [0;35m93beb29784da3bbabc41011ce37dce4146d7541b9de2b68915b4185c1d9f8c8a[0m
-7. Key: [1;33m038bd138251ee06a227cd1917a4e3fffa3a906e57593948e29e2c1184ffa3571fe[0m
-   |--> 1. Transaction: [0;35m93beb29784da3bbabc41011ce37dce4146d7541b9de2b68915b4185c1d9f8c8a[0m
-
-NOTE2: That's not unreasonably - those are from different inputs, so have different signatures.
-
-TODO: Save pubkeys and txid only - decomposite to a dedicated function? Something like "flush_to_file" seems to be a good idea for me.
+TODO: Save pubkeys and txid only + <DONE> decomposite to a dedicated function? Something like "flush_to_file" seems to be a good idea for me.
 +
-TODO: Revert similar size of gathered data files.
+<DONE> TODO: Revert similar size of gathered data files.
++
+TODO: Change print_json.py so that it can go through multiple files.
 -----------------------------------------------------------------------------------------------------------------------------

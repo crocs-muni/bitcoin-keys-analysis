@@ -228,7 +228,22 @@ class Parser:
                                     Parser.unmatched_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signatures' : sigs})
                                     toreturn = True
         return toreturn
-    
+ 
+
+    # This functions simply flush collected data to a JSON file.
+    def flush_saved_data(self, file_name):
+        with open(file_name, 'w') as outfile:
+            json.dump(Parser.saved_data, outfile)
+        Parser.saved_data = {}
+
+    def flush_unmatched(self, file_name):
+        with open(file_name, 'w') as outfile:
+            json.dump(Parser.unmatched_data, outfile)
+        Parser.unmatched_data = {}
+
+
+
+
     # Main functions, takes natural numbers start, end which are the indexes of Bitcoin blocks
     # if start is 0, then the parsing starts at the genesis block
     def process_blocks(self, start, end):
@@ -239,6 +254,9 @@ class Parser:
 
         start_time = time.perf_counter()
         for n in range(start, end):
+            file_counter_saved = 0    # counters needed for creating output file names. 
+            file_counter_unmatched = 0
+
             block_hash = rpc.getblockhash(n)
             block_transactions = rpc.getblock(block_hash)['tx']
             for transaction_hash in block_transactions: # iterating over all transactions in a block
@@ -253,17 +271,22 @@ class Parser:
                     Parser.failed += 1
                     print("Failed transaction ", transaction_hash)
 
-            name = "gathered-data/data_" + str(n) + ".txt"      # change name here and below if you have different data structure
-            with open(name, 'w') as outfile:
-                json.dump(Parser.saved_data, outfile)
-            Parser.saved_data = {}
+                # Maximum key count to store in RAM before flushing to JSON. You can set much more, depends on your RAM size.
+                max_key_count = 100
 
-            if (len(Parser.unmatched_data) != 0):
-                name = "gathered-data/unmatched_" + str(n) + ".txt"
-                with open(name, 'w') as outfile:
-                    json.dump(Parser.unmatched_data, outfile)
-                Parser.unmatched_data = {} 
-                
+                # It doesn't really matter, if some keys would come from a previous block,
+                #   so the only exception of max_key_count is the very last transaction of the very last block.
+                if len(Parser.saved_data) >= max_key_count or (n == end - 1 and transaction_hash == block_transactions[-1]):
+                    # change names here and below if you need to
+                    file_name = "gathered-data/data_" + str(n) + '_' + str(file_counter_saved) + ".txt"
+                    Parser.flush_saved_data(self, file_name)
+                    file_counter_saved += 1
+
+                if len(Parser.unmatched_data) >= max_key_count or (n == end - 1 and transaction_hash == block_transactions[-1]):
+                    file_name = "gathered-data/unmatched_" + str(n) + '_' + str(file_counter_unmatched) + ".txt"
+                    Parser.flush_unmatched(self, file_name)
+                    file_counter_unmatched += 1
+
         print ("Processed ", Parser.inputs, " transactions and gathered ", Parser.keys, " keys, ", Parser.short, " short keys in ", time.perf_counter() - start_time, " seconds.")
 
 #Example of use:
