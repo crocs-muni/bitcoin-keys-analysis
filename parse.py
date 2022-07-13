@@ -272,9 +272,15 @@ class Parser:
                     print("Failed transaction ", transaction_hash)
 
                 # Maximum key count to store in RAM before flushing to JSON. You can set much more, depends on your RAM size.
-                max_key_count = 100
+                # Guess it, or use my formula below.
+                # Note that 400 B - average length of key record in JSON format (including pubkey, txid, time and sig)
 
-                # It doesn't really matter, if some keys would come from a previous block,
+                #RAM_SIZE = 6    # place amount of RAM in GB, that you want to dedicate to the script.
+                #max_key_count = RAM_SIZE * 1024 * 1024 / 400
+
+                max_key_count = 10000
+
+                # It doesn't really matter, if block number in file name and actual block number for a key will differ,
                 #   so the only exception of max_key_count is the very last transaction of the very last block.
                 if len(Parser.saved_data) >= max_key_count or (n == end - 1 and transaction_hash == block_transactions[-1]):
                     # change names here and below if you need to
