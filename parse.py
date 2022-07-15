@@ -19,7 +19,7 @@ class Parser:
         # A function like remove_sighash_flags() is needed, which will remove all flags, not only [ALL].
         # But idk what are they in Bitcoin Core asm format.  
 
-        if len(signature) not in SIGNATURE_LENGTHS:
+        if len(signature) not in Parser.SIGNATURE_LENGTHS:
             print("Failed signature:", signature)
             signature = "NaN"
 
@@ -40,7 +40,7 @@ class Parser:
             if len(vin['scriptSig']['asm'].split(" ")) < 2: # scriptSig should contain a signature and a public key
                 continue
  
-            signature = extract_signature_p2pkh(self, vin)
+            signature = Parser.extract_signature_p2pkh(self, vin)
 
             suspected_key = vin['scriptSig']['asm'].split(" ")[1]
             if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
