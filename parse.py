@@ -9,6 +9,23 @@ class Parser:
     keys = 0
     saved_data = {}
     unmatched_data = {}
+
+    SIGNATURE_LENGTHS = (148, 146, 144, 142, 140) # lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
+
+    def extract_signature_p2pkh(self, vin):
+
+        signature = vin['scriptSig']['asm'].split(" ")[0]
+        signature = signature.replace("[ALL]", "")
+        # A function like remove_sighash_flags() is needed, which will remove all flags, not only [ALL].
+        # But idk what are they in Bitcoin Core asm format.  
+
+        if len(signature) not in SIGNATURE_LENGTHS:
+            print("Failed signature:", signature)
+            signature = "NaN"
+
+        return signature
+
+
     # This function tries to process a Pay to Public Key Hash transaction
     # ScriptSig: contains signature and public key
     # Locking script: contains hash of public key
@@ -16,25 +33,26 @@ class Parser:
     def process_transaction_p2pkh(self, transaction):
         toreturn = False
         for vin in transaction['vin']:
-            if 'scriptSig' in vin.keys(): # this is not a mining block and has a scriptSig
-                if (len(vin['scriptSig']['asm'].split("[ALL] ")) > 1) or (len(vin['scriptSig']['asm'].split(" ")) > 1): # scriptSig contains signature and public key
-                    if (len(vin['scriptSig']['asm'].split("[ALL] ")) > 1):
-                        suspected_key = vin['scriptSig']['asm'].split("[ALL] ")[1]
-                        signature = vin['scriptSig']['asm'].split("[ALL] ")[0]
-                    else:
-                        suspected_key = vin['scriptSig']['asm'].split(" ")[1] # Sometimes they are separated by space for some reason, rather rare
-                        signature = vin['scriptSig']['asm'].split(" ")[0]
-                    if len(signature) not in (148, 146, 144, 142, 140):
-                        signature = "NaN"
-                    if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                        #print("Key:", suspected_key)
-                        if suspected_key not in Parser.saved_data.keys():
-                            if (len(suspected_key) == 66):
-                                Parser.short += 1
-                            Parser.keys += 1
-                            Parser.saved_data[suspected_key] = []
-                        Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
-                        toreturn = True
+
+            if not 'scriptSig' in vin.keys(): # this is a mining block and has no scriptSig
+                continue
+
+            if len(vin['scriptSig']['asm'].split(" ")) < 2: # scriptSig should contain a signature and a public key
+                continue
+ 
+            signature = extract_signature_p2pkh(self, vin)
+
+            suspected_key = vin['scriptSig']['asm'].split(" ")[1]
+            if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
+                #print("Key:", suspected_key)
+                if suspected_key not in Parser.saved_data.keys():
+                    if (len(suspected_key) == 66):
+                        Parser.short += 1
+                    Parser.keys += 1
+                    Parser.saved_data[suspected_key] = []
+                Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
+                toreturn = True
+
         return toreturn
 
     # This function tries to process a Pay to Public Key transaction. Those are mostly old transaction mining BTC
