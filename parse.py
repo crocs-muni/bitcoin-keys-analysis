@@ -12,12 +12,25 @@ class Parser:
 
     SIGNATURE_LENGTHS = (148, 146, 144, 142, 140) # lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
 
+    def correct_ecdsa_key(self, suspected_key):
+        return (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4'))
+
+    def add_key_to_saved_data(self, transaction, suspected_key, signature):
+        if suspected_key not in Parser.saved_data.keys():
+            if (len(suspected_key) == 66):
+                Parser.short += 1
+            Parser.keys += 1
+            Parser.saved_data[suspected_key] = []
+        Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
+
+
     def extract_signature_p2pkh(self, vin):
 
         signature = vin['scriptSig']['asm'].split(" ")[0]
         signature = signature.replace("[ALL]", "")
         # A function like remove_sighash_flags() is needed, which will remove all flags, not only [ALL].
         # But idk what are they in Bitcoin Core asm format.  
+        # Or just cut off last byte?
 
         if len(signature) not in Parser.SIGNATURE_LENGTHS:
             print("Failed signature:", signature)
@@ -41,16 +54,10 @@ class Parser:
                 continue
  
             signature = Parser.extract_signature_p2pkh(self, vin)
-
             suspected_key = vin['scriptSig']['asm'].split(" ")[1]
-            if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                #print("Key:", suspected_key)
-                if suspected_key not in Parser.saved_data.keys():
-                    if (len(suspected_key) == 66):
-                        Parser.short += 1
-                    Parser.keys += 1
-                    Parser.saved_data[suspected_key] = []
-                Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
+
+            if (Parser.correct_ecdsa_key(self, suspected_key)):
+                Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
                 toreturn = True
 
         return toreturn
