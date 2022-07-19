@@ -62,6 +62,15 @@ class Parser:
 
         return toreturn
 
+
+
+
+    def extract_signature_p2pk(self, transaction):
+        signature = "NaN"
+        if ('scriptSig' in transaction['vin'][0].keys()) and (len(transaction['vin'][0]['scriptSig']['hex']) in Parser.SIGNATURE_LENGTHS):
+            signature = transaction['vin'][0]['scriptSig']['hex']
+        return signature
+
     # This function tries to process a Pay to Public Key transaction. Those are mostly old transaction mining BTC
     # ScriptSig: Either not here (mining) or includes signature
     # Locking script: contains public key followed by Checksig OP code
@@ -69,27 +78,26 @@ class Parser:
     def process_transaction_p2pk(self, transaction):
         toreturn = False
         for vout in transaction['vout']:
-            if 'scriptPubKey' in vout.keys():
-                if (len(vout['scriptPubKey']['asm'].split(" OP_CHECKSIG")) > 1): #splitting on the instruction, len should be 2"
-                    suspected_key = vout['scriptPubKey']['asm'].split(" OP_CHECKSIG")[0]
-                    if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                        if suspected_key not in Parser.saved_data.keys():
-                            if (len(suspected_key) == 66):
-                                Parser.short += 1
-                            Parser.keys += 1
-                            Parser.saved_data[suspected_key] = []
-                        if ('scriptSig' in transaction['vin'][0].keys()) and (len(transaction['vin'][0]['scriptSig']['hex']) in (148, 146, 144, 142, 140)):
-                            signature = transaction['vin'][0]['scriptSig']['hex']
-                        else:
-                            signature = "NaN"
-                        Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
-                        toreturn = True
-                        
+
+            if not 'scriptPubKey' in vout.keys():
+                continue
+
+            if (len(vout['scriptPubKey']['asm'].split(" OP_CHECKSIG")) < 2): #splitting on the instruction, len should be 2"
+                continue
+
+            signature = Parser.extract_signature_p2pk(self, transaction)
+            suspected_key = vout['scriptPubKey']['asm'].split(" OP_CHECKSIG")[0]
+
+            if (Parser.correct_ecdsa_key(self, transaction)):
+                Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
+                toreturn = True
+
         for vin in transaction['vin']:
             if 'scriptSig' in vin.keys():
-                if (len(vin['scriptSig']['hex']) in (148, 146, 144, 142, 140)): # Input contains signature only
-                                                                           #    so we have seen the key for this transaction already
+                # Input contains signature only, so we have seen the key for this transaction already
+                if (len(vin['scriptSig']['hex']) in Parser.SIGNATURE_LENGTHS):
                     toreturn = True
+
         return toreturn
     
     # This function tries to process a Pay to Script hash transaction. This is a newer type of transaction with seceral subtypes
@@ -114,7 +122,7 @@ class Parser:
                                     Parser.short += 1
                                 Parser.keys += 1
                                 Parser.saved_data[suspected_key] = []
-                            if len(signature) not in (148, 146, 144, 142, 140):
+                            if len(signature) not in Parser.SIGNATURE_LENGTHS:
                                 signature = "NaN"
                             Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
                             toreturn = True
@@ -139,7 +147,7 @@ class Parser:
                                             Parser.short += 1
                                         Parser.keys += 1
                                         Parser.saved_data[suspected_key] = []
-                                    if len(signature) not in (148, 146, 144, 142, 140):
+                                    if len(signature) not in Parser.SIGNATURE_LENGTHS:
                                         signature = "NaN"
                                     Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
                                     toreturn = True
@@ -149,7 +157,7 @@ class Parser:
                                 signature = vin['scriptSig']['asm'].replace("[ALL]","").split(" ")[j+1]
                                 #print(len(signature))  See notes.txt
                                 #print(signature)
-                                if len(signature) not in (148, 146, 144, 142, 140):
+                                if len(signature) not in Parser.SIGNATURE_LENGTHS:
                                     signature = "NaN"
                                 sigs.append(signature)
                             for i in range(num_keys):
@@ -185,7 +193,7 @@ class Parser:
                                 Parser.short += 1
                             Parser.keys += 1
                             Parser.saved_data[suspected_key] = []
-                        if len(signature) not in (148, 146, 144, 142, 140):
+                        if len(signature) not in Parser.SIGNATURE_LENGTHS:
                             signature = "NaN"
                         Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
                         toreturn = True
@@ -208,7 +216,7 @@ class Parser:
                                     Parser.short += 1
                                 Parser.keys += 1
                                 Parser.saved_data[suspected_key] = []
-                            if len(signature) not in (148, 146, 144, 142, 140):
+                            if len(signature) not in Parser.SIGNATURE_LENGTHS:
                                 signature = "NaN"
                             Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
                             toreturn = True
@@ -229,7 +237,7 @@ class Parser:
                                             Parser.short += 1
                                         Parser.keys += 1
                                         Parser.saved_data[suspected_key] = []
-                                    if len(signature) not in (148, 146, 144, 142, 140):
+                                    if len(signature) not in Parser.SIGNATURE_LENGTHS:
                                         signature = "NaN"
                                     Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
                                     toreturn = True
@@ -237,7 +245,7 @@ class Parser:
                             sigs = []
                             for j in range(num_sigs):
                                 signature = vin['txinwitness'][j + 1]
-                                if len(signature) not in (148, 146, 144, 142, 140):
+                                if len(signature) not in Parser.SIGNATURE_LENGTHS:
                                     signature = "NaN"
                                 sigs.append(signature)
                             for i in range(num_keys):
