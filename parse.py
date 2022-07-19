@@ -233,12 +233,12 @@ class Parser:
     # This functions simply flush collected data to a JSON file.
     def flush_saved_data(self, file_name):
         with open(file_name, 'w') as outfile:
-            json.dump(Parser.saved_data, outfile)
+            json.dump(Parser.saved_data, outfile, indent = 2)
         Parser.saved_data = {}
 
     def flush_unmatched(self, file_name):
         with open(file_name, 'w') as outfile:
-            json.dump(Parser.unmatched_data, outfile)
+            json.dump(Parser.unmatched_data, outfile, indent = 2)
         Parser.unmatched_data = {}
 
 
