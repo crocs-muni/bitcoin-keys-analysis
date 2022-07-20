@@ -1,6 +1,8 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
+QUESTION: self.handle_checksig(transaction, vin, script) vs Parser.handle_checksig(self, transaction, vin, script) ?
+------------------------------------------------------------------------------------------------------------------------------
 NOTE: I have doubts about extract_signature_p2pk(). Looking only at the first input seems to be not always right.
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: I have some doubts about the if statement, where all extractors run.. Wouldn't it be better, if extractors ran on a concrete input, rather than whole transaction? Does Python run all functions in if(), if result is already known??
@@ -28,6 +30,8 @@ If there is, we should rewrite this parts to functions which take public key and
 so that we'd have an api we can use later. Have to think on it more..
 
 TODO: Try to move exctraction of signatures to dedicated functions and diff it with current version.
+
+TODO: Add print("Failed signature P2XXX:", signature)
 
 TODO: Find examples of all transaction types. Then make test script in bash, that will compare outputs of decomposition and main branches. 
 

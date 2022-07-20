@@ -23,6 +23,14 @@ class Parser:
             Parser.saved_data[suspected_key] = []
         Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
 
+    def add_key_to_unmatched_data(self, transaction, suspected_key, sigs):
+        if suspected_key not in Parser.unmatched_data.keys():
+            if (len(suspected_key) == 66):
+                Parser.short += 1
+            Parser.keys += 1
+            Parser.unmatched_data[suspected_key] = []
+        Parser.unmatched_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signatures' : sigs})
+
 
     def extract_signature_p2pkh(self, vin):
 
@@ -88,7 +96,7 @@ class Parser:
             signature = Parser.extract_signature_p2pk(self, transaction)
             suspected_key = vout['scriptPubKey']['asm'].split(" OP_CHECKSIG")[0]
 
-            if (Parser.correct_ecdsa_key(self, transaction)):
+            if (Parser.correct_ecdsa_key(self, suspected_key)):
                 Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
                 toreturn = True
 
@@ -101,22 +109,19 @@ class Parser:
         return toreturn
 
 
-
+    # Make me more clean pls
     def handle_checksig(self, transaction, vin, script):
         if(' ' in script):
             suspected_key = script.split(' ')[0] # blocks in 2019 get parsed with signature[all] pubkey somescript
         else:
             suspected_key = script[:-2]
+
         signature = vin['scriptSig']['asm'].split("[ALL] ")[0].split(" ")[1] # Skipping an extra zero here that was added to BTC script due to bugs
-        if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-            if suspected_key not in Parser.saved_data.keys():
-                if (suspected_key[1] in ('2', '3')):
-                    Parser.short += 1
-                Parser.keys += 1
-                Parser.saved_data[suspected_key] = []
-            if len(signature) not in Parser.SIGNATURE_LENGTHS:
-                signature = "NaN"
-            Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
+        if len(signature) not in Parser.SIGNATURE_LENGTHS:
+            signature = "NaN"
+
+        if (Parser.correct_ecdsa_key(self, suspected_key)):
+            Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
             return True
 
 
@@ -132,20 +137,19 @@ class Parser:
 
         if (num_sigs == num_keys):
             for i in range(num_keys):
+
                 signature = vin['scriptSig']['asm'].replace("[ALL]", "").split(" ")[i+1] # Skipping over the first 0 here as well 
+                if len(signature) not in Parser.SIGNATURE_LENGTHS:
+                    signature = "NaN"
+
                 key_len = int(script[:2], 16)
                 suspected_key = script[2:(key_len*2) + 2]
                 script = script[((key_len*2) + 2):]
-                if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                    if suspected_key not in Parser.saved_data.keys():
-                        if (len(suspected_key) == 66):
-                            Parser.short += 1
-                        Parser.keys += 1
-                        Parser.saved_data[suspected_key] = []
-                    if len(signature) not in Parser.SIGNATURE_LENGTHS:
-                        signature = "NaN"
-                    Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
+
+                if (Parser.correct_ecdsa_key(self, suspected_key)):
+                    Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
                     toreturn = True
+
         else:
             sigs = []
             for j in range(num_sigs):
@@ -155,18 +159,16 @@ class Parser:
                 if len(signature) not in Parser.SIGNATURE_LENGTHS:
                     signature = "NaN"
                 sigs.append(signature)
+
             for i in range(num_keys):
                 key_len = int(script[:2], 16)
                 suspected_key = script[2:(key_len*2) + 2]
                 script = script[((key_len*2) + 2):]
-                if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                    if suspected_key not in Parser.unmatched_data.keys():
-                        if (len(suspected_key) == 66):
-                            Parser.short += 1
-                        Parser.keys += 1
-                        Parser.unmatched_data[suspected_key] = []
-                    Parser.unmatched_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signatures' : sigs})
-                    toreturn = True                            
+
+                if (Parser.correct_ecdsa_key(self, suspected_key)):
+                    Parser.add_key_to_unmatched_data(self, transaction, suspected_key, sigs)
+                    toreturn = True
+
         return toreturn
 
     # This function <<saves>> found data (if any) to Parser.saved_data or Parser.unmatched_data.
@@ -174,9 +176,9 @@ class Parser:
     def parse_serialized_script(self, transaction, vin):
         script = vin['scriptSig']['asm'].split(" ")[-1]
         if script[-1] == 'c' and script[-2] == 'a': # Checksig instruction in hex is "ac"
-            return self.handle_checksig(transaction, vin, script)
+            return Parser.handle_checksig(self, transaction, vin, script)
         if script[-1] == 'e' and script[-2] == 'a': # Checkmultisig instruction in hex is "ae"
-            return self.handle_checkmultisig(transaction, vin, script)
+            return Parser.handle_checkmultisig(self, transaction, vin, script)
         return False
 
 
@@ -193,7 +195,7 @@ class Parser:
             if len(vin['scriptSig']['asm'].split("[ALL] ")) < 2: #splitting on the separator, len should be 2 or more"
                 continue
 
-            if self.parse_serialized_script(transaction, vin):
+            if Parser.parse_serialized_script(self, transaction, vin):
                 toreturn = True
                 
         return toreturn
