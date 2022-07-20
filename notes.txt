@@ -1,6 +1,8 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
+NOTE: I have doubts about extract_signature_p2pk(). Looking only at the first input seems to be not always right.
+------------------------------------------------------------------------------------------------------------------------------
 NOTE: I have some doubts about the if statement, where all extractors run.. Wouldn't it be better, if extractors ran on a concrete input, rather than whole transaction? Does Python run all functions in if(), if result is already known??
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Implementation of parsing p2tr seems to be so easy, but I'm not shure about relevance of pubkeys, which would be gathered from this type of transactions, as they are in most cases <<tweaked>> :/ .
