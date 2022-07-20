@@ -28,4 +28,8 @@ If there is, we should rewrite this parts to functions which take public key and
 so that we'd have an api we can use later. Have to think on it more..
 
 TODO: Try to move exctraction of signatures to dedicated functions and diff it with current version.
+
+TODO: Find examples of all transaction types. Then make test script in bash, that will compare outputs of decomposition and main branches. 
+
+TODO: Review/rewrire handle_checksig() and handle_checkmultisig().
 -----------------------------------------------------------------------------------------------------------------------------
