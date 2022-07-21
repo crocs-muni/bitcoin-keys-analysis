@@ -175,10 +175,13 @@ class Parser:
     # Returns true at least one key was extracted.
     def parse_serialized_script(self, transaction, vin):
         script = vin['scriptSig']['asm'].split(" ")[-1]
+
         if script[-1] == 'c' and script[-2] == 'a': # Checksig instruction in hex is "ac"
             return Parser.handle_checksig(self, transaction, vin, script)
+
         if script[-1] == 'e' and script[-2] == 'a': # Checkmultisig instruction in hex is "ae"
             return Parser.handle_checkmultisig(self, transaction, vin, script)
+
         return False
 
 
@@ -207,21 +210,25 @@ class Parser:
     def process_transaction_p2wpkh(self, transaction):
         toreturn = False
         for vin in transaction['vin']:
-            if 'txinwitness' in vin.keys():
-                signature = vin['txinwitness'][0]
-                if (len(vin['txinwitness']) > 1): 
-                    suspected_key = vin['txinwitness'][1]
-                    if (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4')):
-                        if suspected_key not in Parser.saved_data.keys():
-                            if (len(suspected_key) == 66):
-                                Parser.short += 1
-                            Parser.keys += 1
-                            Parser.saved_data[suspected_key] = []
-                        if len(signature) not in Parser.SIGNATURE_LENGTHS:
-                            signature = "NaN"
-                        Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
-                        toreturn = True
+
+            if not 'txinwitness' in vin.keys():
+                continue
+
+            if (len(vin['txinwitness']) < 2):
+                continue
+
+            signature = vin['txinwitness'][0]
+            if len(signature) not in Parser.SIGNATURE_LENGTHS:
+                signature = "NaN"
+
+            suspected_key = vin['txinwitness'][1]
+            if (Parser.correct_ecdsa_key(self, suspected_key)):
+                Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
+                toreturn = True
+
         return toreturn
+
+
     # This function tries to process a Pay to Witness Script Hash transaction. Those are very new SegWit transactions for Lightning L2 transactions underlaying settlement
     # Segwith contains signature(s) and script
     # returns true if key was extracted

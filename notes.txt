@@ -35,5 +35,5 @@ TODO: Add print("Failed signature P2XXX:", signature)
 
 TODO: Find examples of all transaction types. Then make test script in bash, that will compare outputs of decomposition and main branches. 
 
-TODO: Review/rewrire handle_checksig() and handle_checkmultisig().
+TODO: Review/rewrite handle_checksig() and handle_checkmultisig().
 -----------------------------------------------------------------------------------------------------------------------------
