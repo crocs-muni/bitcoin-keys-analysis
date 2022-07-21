@@ -195,7 +195,7 @@ class Parser:
             if not 'scriptSig' in vin.keys():
                 continue
 
-            if len(vin['scriptSig']['asm'].split("[ALL] ")) < 2: #splitting on the separator, len should be 2 or more"
+            if len(vin['scriptSig']['asm'].split(" ")) < 2: #splitting on the separator, len should be 2 or more"
                 continue
 
             if Parser.parse_serialized_script(self, transaction, vin):
