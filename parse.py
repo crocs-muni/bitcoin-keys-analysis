@@ -41,7 +41,7 @@ class Parser:
         # Or just cut off last byte?
 
         if len(signature) not in Parser.SIGNATURE_LENGTHS:
-            #print("Failed signature:", signature)
+            #print("[P2PKH] Failed signature:", signature)
             signature = "NaN"
 
         return signature
@@ -61,8 +61,8 @@ class Parser:
             if len(vin['scriptSig']['asm'].split(" ")) < 2: # scriptSig should contain a signature and a public key
                 continue
  
-            signature = Parser.extract_signature_p2pkh(self, vin)
             suspected_key = vin['scriptSig']['asm'].split(" ")[1]
+            signature = Parser.extract_signature_p2pkh(self, vin)
 
             if (Parser.correct_ecdsa_key(self, suspected_key)):
                 Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
@@ -74,9 +74,15 @@ class Parser:
 
 
     def extract_signature_p2pk(self, transaction):
-        signature = "NaN"
-        if ('scriptSig' in transaction['vin'][0].keys()) and (len(transaction['vin'][0]['scriptSig']['hex']) in Parser.SIGNATURE_LENGTHS):
-            signature = transaction['vin'][0]['scriptSig']['hex']
+
+        if not "scriptSig" in transaction["vin"][0].keys():
+            return "NaN"
+
+        signature = transaction['vin'][0]['scriptSig']['hex']
+        if len(signature) not in Parser.SIGNATURE_LENGTHS:
+            #print("[P2PK] Failed signature:", signature)
+            signature = "NaN"
+
         return signature
 
     # This function tries to process a Pay to Public Key transaction. Those are mostly old transaction mining BTC
@@ -93,8 +99,8 @@ class Parser:
             if (len(vout['scriptPubKey']['asm'].split(" OP_CHECKSIG")) < 2): #splitting on the instruction, len should be 2"
                 continue
 
-            signature = Parser.extract_signature_p2pk(self, transaction)
             suspected_key = vout['scriptPubKey']['asm'].split(" OP_CHECKSIG")[0]
+            signature = Parser.extract_signature_p2pk(self, transaction)
 
             if (Parser.correct_ecdsa_key(self, suspected_key)):
                 Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
@@ -112,12 +118,14 @@ class Parser:
     def extract_signature_p2sh_checksig(self, vin):
         signature = vin['scriptSig']['asm'].split("[ALL] ")[0].split(" ")[1] # Skipping an extra zero here that was added due to bugs
         if len(signature) not in Parser.SIGNATURE_LENGTHS:
+            #print("[P2SH][OP_CHECKSIG] Failed signature:", signature)
             signature = "NaN"
         return signature
 
     def extract_signature_p2sh_multisig(self, vin, i):
         signature = vin['scriptSig']['asm'].replace("[ALL]", "").split(" ")[i+1] # Skipping over the first 0 here as well
         if len(signature) not in Parser.SIGNATURE_LENGTHS:
+            #print("[P2SH][OP_CHECKMULTISIG] Failed signature:", signature)
             signature = "NaN"
         return signature
 
@@ -125,6 +133,7 @@ class Parser:
     def extract_signature_p2wsh(self, vin, i):
         signature = vin['txinwitness'][i + 1] # Skipping the empty item
         if len(signature) not in Parser.SIGNATURE_LENGTHS:
+            #print("[P2WSH] Failed signature:", signature)
             signature = "NaN"
         return signature
 
@@ -230,7 +239,15 @@ class Parser:
                 toreturn = True
                 
         return toreturn
-    
+
+
+    def extract_signature_p2wpkh(self, vin):
+        signature = vin['txinwitness'][0]
+        if len(signature) not in Parser.SIGNATURE_LENGTHS:
+            #print("[P2WPKH] Failed signature:", signature)
+            signature = "NaN"
+        return signature
+
     # This function tries to process a Pay to Witness Public Key transaction. Those are new SegWit transactions
     # We do not care about scriptPubKey or Sigscript in this case
     # Segwith contains signature and public key
@@ -245,11 +262,9 @@ class Parser:
             if (len(vin['txinwitness']) < 2):
                 continue
 
-            signature = vin['txinwitness'][0]
-            if len(signature) not in Parser.SIGNATURE_LENGTHS:
-                signature = "NaN"
-
             suspected_key = vin['txinwitness'][1]
+            signature = Parser.extract_signature_p2wpkh(self, vin)
+
             if (Parser.correct_ecdsa_key(self, suspected_key)):
                 Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
                 toreturn = True

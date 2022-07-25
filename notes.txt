@@ -5,13 +5,13 @@ QUESTION: self.handle_checksig(transaction, vin, script) vs Parser.handle_checks
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: I have doubts about extract_signature_p2pk(). Looking only at the first input seems to be not always right.
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: I have some doubts about the if statement, where all extractors run.. Wouldn't it be better, if extractors ran on a concrete input, rather than whole transaction? Does Python run all functions in if(), if result is already known??
+NOTE: I have some doubts about the if statement, where all extractors run.. Wouldn't it be better, if extractors ran on a concrete input, rather than whole transaction?
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Implementation of parsing p2tr seems to be so easy, but I'm not shure about relevance of pubkeys, which would be gathered from this type of transactions, as they are in most cases <<tweaked>> :/ .
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Work around different sighash flags (now only [ALL], but SIGHASH_ANYONECANPAY and others should be there as well).
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: Copy&paste in parsing serialized script. And in other parts of parse.py as well, but here that's the most critical.
+<SOLVED>: Copy&paste in parsing serialized script. And in other parts of parse.py as well, but here that's the most critical.
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Script can not parse P2SH and P2WSH transactions, where:
     1) OP_CHECKSIG or OP_CHECKMULTISIG are not at the end. Example (txid):
@@ -24,16 +24,15 @@ NOTE: Script can not parse P2SH and P2WSH transactions, where:
 Full rewrite of parsing serialized script is needed in order to solve it.
 However, this is only a small percent of transactions, and this is not urgent, so I will try to deal with it later, if it turns out to be reasonable to do..
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: I don't think that just removing parts of the script, which collect signatures, is a good idea.
-If there is no reasonable way to get signature with knowledge of public key and txid, then I wouldn't cut off this parts.
-If there is, we should rewrite this parts to functions which take public key and txid and return the signature,
-so that we'd have an api we can use later. Have to think on it more..
+NOTE: Verbosity mode - print what exactly failed and what succeded.
+------------------------------------------------------------------------------------------------------------------------------
+NOTE: Review/rewrite handle_checksig() and handle_checkmultisig().
 
-TODO: Try to move exctraction of signatures to dedicated functions and diff it with current version.
+<DONE>: Try to move exctraction of signatures to dedicated functions and diff it with current version.
 
-TODO: Add print("Failed signature P2XXX:", signature)
+<DONE>: Add print("Failed signature P2XXX:", signature)
 
-TODO: Find examples of all transaction types. Then make test script in bash, that will compare outputs of decomposition and main branches. 
-
-TODO: Review/rewrite handle_checksig() and handle_checkmultisig().
+<DONE>: Find examples of all transaction types. Then compare outputs of decomposition and main branches. 
+-----------------------------------------------------------------------------------------------------------------------------
+NOTE: So.. Should we collect pubkey's and txid's only?
 -----------------------------------------------------------------------------------------------------------------------------
