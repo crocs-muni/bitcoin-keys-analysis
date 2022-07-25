@@ -11,8 +11,6 @@ NOTE: Implementation of parsing p2tr seems to be so easy, but I'm not shure abou
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Work around different sighash flags (now only [ALL], but SIGHASH_ANYONECANPAY and others should be there as well).
 ------------------------------------------------------------------------------------------------------------------------------
-<SOLVED>: Copy&paste in parsing serialized script. And in other parts of parse.py as well, but here that's the most critical.
-------------------------------------------------------------------------------------------------------------------------------
 NOTE: Script can not parse P2SH and P2WSH transactions, where:
     1) OP_CHECKSIG or OP_CHECKMULTISIG are not at the end. Example (txid):
         208a95aff0c4243fdc7c610b700e1eb6a19bb786f3d96d79ecd410183f067687
@@ -27,12 +25,6 @@ However, this is only a small percent of transactions, and this is not urgent, s
 NOTE: Verbosity mode - print what exactly failed and what succeded.
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Review/rewrite handle_checksig() and handle_checkmultisig().
-
-<DONE>: Try to move exctraction of signatures to dedicated functions and diff it with current version.
-
-<DONE>: Add print("Failed signature P2XXX:", signature)
-
-<DONE>: Find examples of all transaction types. Then compare outputs of decomposition and main branches. 
 -----------------------------------------------------------------------------------------------------------------------------
 NOTE: So.. Should we collect pubkey's and txid's only?
 -----------------------------------------------------------------------------------------------------------------------------

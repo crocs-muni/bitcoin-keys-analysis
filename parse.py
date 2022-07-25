@@ -292,6 +292,10 @@ class Parser:
         return toreturn
  
 
+    def process_transaction_p2tr(self, transaction):
+        # TODO
+        return true
+    
     # This functions simply flush collected data to a JSON file.
     def flush_saved_data(self, file_name):
         with open(file_name, 'w') as outfile:

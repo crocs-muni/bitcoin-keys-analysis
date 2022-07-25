@@ -7,3 +7,4 @@ P2SH (OP_CHECKSIG): <find me please!>                                           
 P2SH (OP_CHECKMULTISIG): 00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8   (Input no. 0)
 P2WPKH: 9989bb6dd74ceeb6751502b728b948c6967d61a75f66c6d28de77b4d7d8b4cde                    (Input no. 0)
 P2WSH: c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a                     (Input no. 2)
+P2TR: 37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8                      (Both inputs)
