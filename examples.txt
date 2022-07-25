@@ -1,0 +1,9 @@
+This file contains transaction examples (TXID's) of different transaction types.
+Very usefull when debuging or testing.
+
+P2PK: 1e3c85f59802e3907a254766fd466e308888bf3fcaa0723a9599b8ff41028503                      (Output no. 0)
+P2PKH: ce6fb9e782df2f5dbd4190069c3ec31ccf1ea2429b890da3c2b12ef37037a5be                     (Input no. 0)
+P2SH (OP_CHECKSIG): <find me please!>                                                       (Input no. ?)
+P2SH (OP_CHECKMULTISIG): 00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8   (Input no. 0)
+P2WPKH: 9989bb6dd74ceeb6751502b728b948c6967d61a75f66c6d28de77b4d7d8b4cde                    (Input no. 0)
+P2WSH: c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a                     (Input no. 2)
