@@ -5,33 +5,39 @@ import bitcoin, bitcoin.rpc, struct, time, os, json
 class Parser:
     failed = 0
     inputs = 0
-    short = 0
+    ecdsa = 0
+    schnorr = 0
     keys = 0
     saved_data = {}
     unmatched_data = {}
 
     ECDSA_SIG_LENGTHS = (148, 146, 144, 142, 140)   # Lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
+    ECDSA_PUBKEY_LENGTHS = (66, 130)
 
-    # Signature itself is always 64 bytes, but it's possible to set non-default hash_type (watch BIP341 - Common signature message) in 65th byte.
+    # Schnorr signature in bitcoin itself is always 64 bytes, but it's possible to set non-default hash_type in 65th byte.
+    #                                                                                   (watch BIP341 - Common signature message)
     SCHNORR_SIG_LENGTHS = (128, 130)
     SCHNORR_PUBKEY_LENGTH = 64
 
     def correct_ecdsa_key(self, suspected_key):
-        return (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4'))
+        return (len(suspected_key) in Parser.ECDSA_PUBKEY_LENGTHS) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4'))
+
+    def increment_key_count(self, suspected_key):
+        if len(suspected_key) in Parser.ECDSA_PUBKEY_LENGTHS:
+            Parser.ecdsa += 1
+        if len(suspected_key) == Parser.SCHNORR_PUBKEY_LENGTH:
+            Parser.schnorr += 1
+        Parser.keys += 1
 
     def add_key_to_saved_data(self, transaction, suspected_key, signature):
         if suspected_key not in Parser.saved_data.keys():
-            if len(suspected_key) == 66:
-                Parser.short += 1
-            Parser.keys += 1
+            Parser.increment_key_count(self, suspected_key)
             Parser.saved_data[suspected_key] = []
         Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
 
     def add_key_to_unmatched_data(self, transaction, suspected_key, sigs):
         if suspected_key not in Parser.unmatched_data.keys():
-            if len(suspected_key) == 66:
-                Parser.short += 1
-            Parser.keys += 1
+            Parser.increment_key_count(self, suspected_key)
             Parser.unmatched_data[suspected_key] = []
         Parser.unmatched_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signatures' : sigs})
 
@@ -300,7 +306,6 @@ class Parser:
         signature = vin['txinwitness'][0]
         if len(signature) == 130:
             signature = signature[:-2]  # Removing 'hash_type' byte (BIP341 - Common signature message)
-            #print("Sig len:", len(signature)/2, "bytes.")
 
         prev_transaction_id = vin["txid"]
         prev_transaction = rpc.getrawtransaction(prev_transaction_id, True)
@@ -332,7 +337,7 @@ class Parser:
 
         for vin in transaction['vin']:
 
-            if not 'txinwitness' in vin.keys():
+            if not 'txinwitness' in vin.keys() or len(vin['txinwitness']) == 0:
                 continue
 
             if len(vin['txinwitness']) == 1 and len(vin['txinwitness'][0]) in Parser.SCHNORR_SIG_LENGTHS:
@@ -404,7 +409,7 @@ class Parser:
                     Parser.flush_unmatched(self, file_name)
                     file_counter_unmatched += 1
 
-        print ("Processed ", Parser.inputs, " transactions and gathered ", Parser.keys, " keys, ", Parser.short, " short keys in ", time.perf_counter() - start_time, " seconds.")
+        print ("Processed ", Parser.inputs, " transactions and gathered ", Parser.keys, " keys: ", Parser.ecdsa, " ECDSA keys, ", Parser.schnorr," Schnorr Signature keys; in ", time.perf_counter() - start_time, " seconds.")
 
 #Example of use:
 parser = Parser()
