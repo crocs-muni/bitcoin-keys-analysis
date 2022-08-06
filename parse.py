@@ -10,8 +10,10 @@ class Parser:
     saved_data = {}
     unmatched_data = {}
 
-    ECDSA_SIG_LENGTHS = (148, 146, 144, 142, 140) # lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
-    SCHNORR_SIG_LENGTH = 128                      # same
+    ECDSA_SIG_LENGTHS = (148, 146, 144, 142, 140)   # Lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
+
+    # Signature itself is always 64 bytes, but it's possible to set non-default hash_type (watch BIP341 - Common signature message) in 65th byte.
+    SCHNORR_SIG_LENGTHS = (128, 130)
     SCHNORR_PUBKEY_LENGTH = 64
 
     def correct_ecdsa_key(self, suspected_key):
@@ -294,35 +296,38 @@ class Parser:
         return toreturn
  
 
-    def handle_p2tr_keypath(self, transaction, vin):
+    def handle_p2tr_keypath(self, transaction, vin, rpc):
         signature = vin['txinwitness'][0]
+        if len(signature) == 130:
+            signature = signature[:-2]  # Removing 'hash_type' byte (BIP341 - Common signature message)
+            #print("Sig len:", len(signature)/2, "bytes.")
 
         prev_transaction_id = vin["txid"]
         prev_transaction = rpc.getrawtransaction(prev_transaction_id, True)
         vout_num = vin["vout"]
-        vout = prev_transation["vout"][vout_num]
+        vout = prev_transaction["vout"][vout_num]
 
         if "scriptPubKey" not in vout.keys():
-            #print("Failed p2tr vout: no 'scriptPubKey'!")
+            print("Failed p2tr vout: no 'scriptPubKey'!")
             return False                                                    # This two if's are not necessary,
                                                                             # but if you are as pedantic as I am, you can leave them.
         if vout["scriptPubKey"]["type"] != "witness_v1_taproot":
-            #print("Failed p2tr vout: type is not 'witness_v1_taproot'")
+            print("Failed p2tr vout: type is not 'witness_v1_taproot'")
             return False
 
-        suspected_key = vout["scriptPubKey"]["asm"][-1]     # As far as I'm concerned, there are always 2 elements.
-                                                            # The first one, I guess, is a version byte.
-        #suspected_key = vout["scriptPubKey"]["asm"][1]     # And the second one is a public key. So idk what's better - '[-1]' or '[1]'?
+        suspected_key = vout["scriptPubKey"]["asm"].split(' ')[-1]  # As far as I'm concerned, there are always 2 elements.
+                                                                    # The first one, I guess, is a version byte.
+        #suspected_key = vout["scriptPubKey"]["asm"].split(' ')[1]  # And the second one is a public key. So idk what's better - '[-1]' or '[1]'?
 
         if len(suspected_key) != Parser.SCHNORR_PUBKEY_LENGTH:
-            #print("Failed p2tr vout: suspected key (", suspected_key, ") is not ", Parser.SCHNORR_PUBKEY_LENGTH/2, " bytes long!", sep = '')
+            print("Failed p2tr vout: suspected key (", suspected_key, ") is not ", Parser.SCHNORR_PUBKEY_LENGTH/2, " bytes long!", sep = '')
             return False
 
         Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
-        print("Successful P2TR!!!")
+        print("Successful P2TR [KEYPATH]!!! TXID:", transaction["txid"])
         return True
 
-    def process_transaction_p2tr(self, transaction):
+    def process_transaction_p2tr(self, transaction, rpc):
         toreturn = False
 
         for vin in transaction['vin']:
@@ -330,8 +335,8 @@ class Parser:
             if not 'txinwitness' in vin.keys():
                 continue
 
-            if len(vin['txinwitness']) == 1 and len(vin['txinwitness'][0]) == Parser.SCHNORR_SIG_LENGTH:
-                if Parser.handle_p2tr_keypath(self, transaction, vin):
+            if len(vin['txinwitness']) == 1 and len(vin['txinwitness'][0]) in Parser.SCHNORR_SIG_LENGTHS:
+                if Parser.handle_p2tr_keypath(self, transaction, vin, rpc):
                     toreturn = True
 
         return toreturn
@@ -370,7 +375,7 @@ class Parser:
                 transaction = rpc.getrawtransaction(transaction_hash, True) # Getting transaction in verbose format to get all the needed parsed details
                 try:
                     # Running all extractors, last check is if transaction is new version of mining and contains no public key, only hash of miner pub key
-                    if not (Parser.process_transaction_p2pkh(self, transaction) or Parser.process_transaction_p2sh(self, transaction) or Parser.process_transaction_p2wpkh(self, transaction) or Parser.process_transaction_p2wsh(self, transaction) or Parser.process_transaction_p2pk(self, transaction) or ('coinbase' in transaction['vin'][0].keys())):
+                    if not (Parser.process_transaction_p2pkh(self, transaction) or Parser.process_transaction_p2tr(self, transaction, rpc) or Parser.process_transaction_p2sh(self, transaction) or Parser.process_transaction_p2wpkh(self, transaction) or Parser.process_transaction_p2wsh(self, transaction) or Parser.process_transaction_p2pk(self, transaction) or ('coinbase' in transaction['vin'][0].keys())):
                         Parser.failed += 1
                         print("Failed transaction ", transaction_hash)
                 except (ValueError, IndexError) as e:
