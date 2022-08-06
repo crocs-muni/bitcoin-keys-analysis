@@ -10,14 +10,15 @@ class Parser:
     saved_data = {}
     unmatched_data = {}
 
-    SIGNATURE_LENGTHS = (148, 146, 144, 142, 140) # lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
+    ECDSA_SIG_LENGTHS = (148, 146, 144, 142, 140) # lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
+    SCHNORR_SIG_LENGTH = 128                      # same
 
     def correct_ecdsa_key(self, suspected_key):
         return (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4'))
 
     def add_key_to_saved_data(self, transaction, suspected_key, signature):
         if suspected_key not in Parser.saved_data.keys():
-            if (len(suspected_key) == 66):
+            if len(suspected_key) == 66:
                 Parser.short += 1
             Parser.keys += 1
             Parser.saved_data[suspected_key] = []
@@ -25,7 +26,7 @@ class Parser:
 
     def add_key_to_unmatched_data(self, transaction, suspected_key, sigs):
         if suspected_key not in Parser.unmatched_data.keys():
-            if (len(suspected_key) == 66):
+            if len(suspected_key) == 66:
                 Parser.short += 1
             Parser.keys += 1
             Parser.unmatched_data[suspected_key] = []
@@ -40,7 +41,7 @@ class Parser:
         # But idk what are they in Bitcoin Core asm format. 
         # Or just cut off last byte?
 
-        if len(signature) not in Parser.SIGNATURE_LENGTHS:
+        if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
             #print("[P2PKH] Failed signature:", signature)
             signature = "NaN"
 
@@ -64,7 +65,7 @@ class Parser:
             suspected_key = vin['scriptSig']['asm'].split(" ")[1]
             signature = Parser.extract_signature_p2pkh(self, vin)
 
-            if (Parser.correct_ecdsa_key(self, suspected_key)):
+            if Parser.correct_ecdsa_key(self, suspected_key):
                 Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
                 toreturn = True
 
@@ -79,7 +80,7 @@ class Parser:
             return "NaN"
 
         signature = transaction['vin'][0]['scriptSig']['hex']
-        if len(signature) not in Parser.SIGNATURE_LENGTHS:
+        if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
             #print("[P2PK] Failed signature:", signature)
             signature = "NaN"
 
@@ -96,20 +97,20 @@ class Parser:
             if not 'scriptPubKey' in vout.keys():
                 continue
 
-            if (len(vout['scriptPubKey']['asm'].split(" OP_CHECKSIG")) < 2): #splitting on the instruction, len should be 2"
+            if len(vout['scriptPubKey']['asm'].split(" OP_CHECKSIG")) < 2: #splitting on the instruction, len should be 2"
                 continue
 
             suspected_key = vout['scriptPubKey']['asm'].split(" OP_CHECKSIG")[0]
             signature = Parser.extract_signature_p2pk(self, transaction)
 
-            if (Parser.correct_ecdsa_key(self, suspected_key)):
+            if Parser.correct_ecdsa_key(self, suspected_key):
                 Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
                 toreturn = True
 
         for vin in transaction['vin']:
             if 'scriptSig' in vin.keys():
                 # Input contains signature only, so we have seen the key for this transaction already
-                if (len(vin['scriptSig']['hex']) in Parser.SIGNATURE_LENGTHS):
+                if len(vin['scriptSig']['hex']) in Parser.ECDSA_SIG_LENGTHS:
                     toreturn = True
 
         return toreturn
@@ -117,14 +118,14 @@ class Parser:
     # I suppose these two functions can be connected to one?
     def extract_signature_p2sh_checksig(self, vin):
         signature = vin['scriptSig']['asm'].split("[ALL] ")[0].split(" ")[1] # Skipping an extra zero here that was added due to bugs
-        if len(signature) not in Parser.SIGNATURE_LENGTHS:
+        if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
             #print("[P2SH][OP_CHECKSIG] Failed signature:", signature)
             signature = "NaN"
         return signature
 
     def extract_signature_p2sh_multisig(self, vin, i):
         signature = vin['scriptSig']['asm'].replace("[ALL]", "").split(" ")[i+1] # Skipping over the first 0 here as well
-        if len(signature) not in Parser.SIGNATURE_LENGTHS:
+        if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
             #print("[P2SH][OP_CHECKMULTISIG] Failed signature:", signature)
             signature = "NaN"
         return signature
@@ -132,7 +133,7 @@ class Parser:
     # In case of checksig pass i = 0
     def extract_signature_p2wsh(self, vin, i):
         signature = vin['txinwitness'][i + 1] # Skipping the empty item
-        if len(signature) not in Parser.SIGNATURE_LENGTHS:
+        if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
             #print("[P2WSH] Failed signature:", signature)
             signature = "NaN"
         return signature
@@ -140,7 +141,7 @@ class Parser:
 
 
     def handle_checksig(self, transaction, vin, script, transaction_type):
-        if(' ' in script):
+        if ' ' in script:
             suspected_key = script.split(' ')[0] # blocks in 2019 get parsed with signature[all] pubkey somescript
         else:
             suspected_key = script[:-2]
@@ -150,14 +151,14 @@ class Parser:
         if transaction_type == "P2WSH":
             signature = Parser.extract_signature_p2wsh(self, vin, 0)
 
-        if (Parser.correct_ecdsa_key(self, suspected_key)):
+        if Parser.correct_ecdsa_key(self, suspected_key):
             Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
             return True
 
     # Make me more clean pls
     def handle_checkmultisig(self, transaction, vin, script, transaction_type):
         toreturn = False
-        if (script[0] == '1' and script[1] == '4'): # Transactions found in block 570006 that break the script completely
+        if script[0] == '1' and script[1] == '4': # Transactions found in block 570006 that break the script completely
             return False
 
         num_sigs = int(script[1], 16) # Checking the number of signatures present
@@ -165,7 +166,7 @@ class Parser:
         num_keys = int(script[-1], 16) # Bit hacky but should work, format should be num of signatures required pubkey1 ... pubkeyn num of all pubkeys
         script = script[:-2] # Cutting counter at beginning and end"
 
-        if (num_sigs == num_keys):
+        if num_sigs == num_keys:
             for i in range(num_keys):
 
                 if transaction_type == "P2SH":
@@ -177,7 +178,7 @@ class Parser:
                 suspected_key = script[2:(key_len*2) + 2]
                 script = script[((key_len*2) + 2):]
 
-                if (Parser.correct_ecdsa_key(self, suspected_key)):
+                if Parser.correct_ecdsa_key(self, suspected_key):
                     Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
                     toreturn = True
 
@@ -197,7 +198,7 @@ class Parser:
                 suspected_key = script[2:(key_len*2) + 2]
                 script = script[((key_len*2) + 2):]
 
-                if (Parser.correct_ecdsa_key(self, suspected_key)):
+                if Parser.correct_ecdsa_key(self, suspected_key):
                     Parser.add_key_to_unmatched_data(self, transaction, suspected_key, sigs)
                     toreturn = True
 
@@ -243,7 +244,7 @@ class Parser:
 
     def extract_signature_p2wpkh(self, vin):
         signature = vin['txinwitness'][0]
-        if len(signature) not in Parser.SIGNATURE_LENGTHS:
+        if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
             #print("[P2WPKH] Failed signature:", signature)
             signature = "NaN"
         return signature
@@ -259,13 +260,13 @@ class Parser:
             if not 'txinwitness' in vin.keys():
                 continue
 
-            if (len(vin['txinwitness']) < 2):
+            if len(vin['txinwitness']) < 2:
                 continue
 
             suspected_key = vin['txinwitness'][1]
             signature = Parser.extract_signature_p2wpkh(self, vin)
 
-            if (Parser.correct_ecdsa_key(self, suspected_key)):
+            if Parser.correct_ecdsa_key(self, suspected_key):
                 Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
                 toreturn = True
 
@@ -282,7 +283,7 @@ class Parser:
             if not 'txinwitness' in vin.keys():
                 continue
 
-            if (len(vin['txinwitness']) < 2):
+            if len(vin['txinwitness']) < 2:
                 continue
 
             script = vin['txinwitness'][-1]
@@ -293,8 +294,15 @@ class Parser:
  
 
     def process_transaction_p2tr(self, transaction):
-        # TODO
-        return true
+        toreturn = False
+
+        for vin in transaction['vin']:
+
+            if not 'txinwitness' in vin.keys():
+                continue
+
+            #if len()
+        return toreturn
     
     # This functions simply flush collected data to a JSON file.
     def flush_saved_data(self, file_name):
