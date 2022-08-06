@@ -12,6 +12,7 @@ class Parser:
 
     ECDSA_SIG_LENGTHS = (148, 146, 144, 142, 140) # lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
     SCHNORR_SIG_LENGTH = 128                      # same
+    SCHNORR_PUBKEY_LENGTH = 64
 
     def correct_ecdsa_key(self, suspected_key):
         return (len(suspected_key) in (66, 130)) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4'))
@@ -293,6 +294,34 @@ class Parser:
         return toreturn
  
 
+    def handle_p2tr_keypath(self, transaction, vin):
+        signature = vin['txinwitness'][0]
+
+        prev_transaction_id = vin["txid"]
+        prev_transaction = rpc.getrawtransaction(prev_transaction_id, True)
+        vout_num = vin["vout"]
+        vout = prev_transation["vout"][vout_num]
+
+        if "scriptPubKey" not in vout.keys():
+            #print("Failed p2tr vout: no 'scriptPubKey'!")
+            return False                                                    # This two if's are not necessary,
+                                                                            # but if you are as pedantic as I am, you can leave them.
+        if vout["scriptPubKey"]["type"] != "witness_v1_taproot":
+            #print("Failed p2tr vout: type is not 'witness_v1_taproot'")
+            return False
+
+        suspected_key = vout["scriptPubKey"]["asm"][-1]     # As far as I'm concerned, there are always 2 elements.
+                                                            # The first one, I guess, is a version byte.
+        #suspected_key = vout["scriptPubKey"]["asm"][1]     # And the second one is a public key. So idk what's better - '[-1]' or '[1]'?
+
+        if len(suspected_key) != Parser.SCHNORR_PUBKEY_LENGTH:
+            #print("Failed p2tr vout: suspected key (", suspected_key, ") is not ", Parser.SCHNORR_PUBKEY_LENGTH/2, " bytes long!", sep = '')
+            return False
+
+        Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
+        print("Successful P2TR!!!")
+        return True
+
     def process_transaction_p2tr(self, transaction):
         toreturn = False
 
@@ -301,7 +330,10 @@ class Parser:
             if not 'txinwitness' in vin.keys():
                 continue
 
-            #if len()
+            if len(vin['txinwitness']) == 1 and len(vin['txinwitness'][0]) == Parser.SCHNORR_SIG_LENGTH:
+                if Parser.handle_p2tr_keypath(self, transaction, vin):
+                    toreturn = True
+
         return toreturn
     
     # This functions simply flush collected data to a JSON file.
