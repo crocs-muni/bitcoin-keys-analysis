@@ -128,7 +128,7 @@ class Parser:
 
         return toreturn
 
-    # I suppose these two functions can be connected to one?
+    # I suppose these two functions can be merged into one?
     def extract_signature_p2sh_checksig(self, vin):
         signature = vin['scriptSig']['asm'].split("[ALL] ")[0].split(" ")[1] # Skipping an extra zero here that was added due to bugs
         if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
@@ -319,48 +319,42 @@ class Parser:
         vout = prev_transaction["vout"][vout_num]
 
         if "scriptPubKey" not in vout.keys():
-            print("Failed p2tr vout: no 'scriptPubKey'!")
             return False                                                    # This two if's are not necessary,
                                                                             # but if you are as pedantic as I am, you can leave them.
         if vout["scriptPubKey"]["type"] != "witness_v1_taproot":
-            print("Failed p2tr vout: type is not 'witness_v1_taproot'")
             return False
 
         suspected_key = vout["scriptPubKey"]["asm"].split(' ')[-1]  # As far as I'm concerned, there are always 2 elements.
                                                                     # The first one, I guess, is a version byte.
-        #suspected_key = vout["scriptPubKey"]["asm"].split(' ')[1]  # And the second one is a public key. So idk what's better - '[-1]' or '[1]'?
+                                                                    # And the second one is a public key.
 
         if not Parser.correct_schnorr_key(self, suspected_key):
             print("Failed p2tr vout: suspected key (", suspected_key, ") is not ", Parser.SCHNORR_PUBKEY_LENGTH/2, " bytes long!", sep = '')
             return False
 
         Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
-        print("Successful P2TR [KEYPATH]!!! TXID:", transaction["txid"])
         return True
 
 
     def handle_p2tr_scriptpath(self, transaction, vin):
         toreturn = False
         if len(vin['txinwitness']) < 3: # Should contain at least three things: some inputs for a script, the script and a control block.
-            #print("Failed P2TR [SCRIPTPATH] witness has less than 3 elements. TXID:", transaction["txid"])
             return toreturn
 
         control_block = vin['txinwitness'][-1]
         if (len(control_block) - 2) % 64 != 0: # Explanation on the link below. Too long to paste it here.
-            #print("Failed P2TR [SCRIPTPATH] controlblock bad format!")
             return toreturn
 
-        control_block = control_block[2:]
+        control_block = control_block[2:] # We don't need a leaf version and a sign bit, which are stored in the first byte.
         suspected_key = control_block[:64]
 
         if Parser.correct_schnorr_key(self, suspected_key):
             Parser.add_key_to_saved_data(self, transaction, suspected_key, "NaN")
-            print("Successful P2TR [SCRIPTPATH][CONTROLBLOCK]!!! TXID:", transaction["txid"])
             toreturn = True
 
         script = vin["txinwitness"][-2]
         if Parser.parse_serialized_script(self, transaction, vin, script, "P2TR"):
-            print("Successful P2TR [SCRIPTPATH]!!! TXID:", transaction["txid"])
+            print("Successful P2TR [SCRIPT]!!! TXID:", transaction["txid"])
             toreturn = True
 
         return toreturn
@@ -448,8 +442,12 @@ class Parser:
                     Parser.flush_unmatched(self, file_name)
                     file_counter_unmatched += 1
 
-        print ("Processed ", Parser.inputs, " transactions and gathered ", Parser.keys, " keys: ", Parser.ecdsa, " ECDSA keys, ", Parser.schnorr," Schnorr Signature keys; in ", time.perf_counter() - start_time, " seconds.")
+        print("\n", "=" * os.get_terminal_size().columns, sep = '')
+        print ("Processed ", Parser.inputs, " transactions and gathered ", Parser.keys, " keys: ", Parser.ecdsa, " ECDSA keys, ", \
+                Parser.schnorr," Schnorr Signature keys; in ", time.perf_counter() - start_time,\
+               " seconds. Failed to parse ", Parser.failed, " transactions ( {:0.2f}".format(Parser.failed/Parser.inputs*100), "%).")
+        print("=" * os.get_terminal_size().columns)
 
 #Example of use:
 parser = Parser()
-parser.process_blocks(739000, 739020)
+parser.process_blocks(739000, 739001)

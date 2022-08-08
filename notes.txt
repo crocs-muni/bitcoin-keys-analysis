@@ -6,8 +6,10 @@ QUESTION: self.handle_checksig(transaction, vin, script) vs Parser.handle_checks
 NOTE: I have doubts about extract_signature_p2pk(). Looking only at the first input seems to be not always right.
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: I have some doubts about the if statement, where all extractors run.. Wouldn't it be better, if extractors ran on a concrete input, rather than whole transaction?
-------------------------------------------------------------------------------------------------------------------------------
-NOTE: Implementation of parsing p2tr seems to be so easy, but I'm not shure about relevance of pubkeys, which would be gathered from this type of transactions, as they are in most cases <<tweaked>> :/ .
+NOTE2: Faster, because we run only one process_p2xxx function, but slower, because we have to look at the previous transaction vout.
+NOTE3: Process_p2xxx() seems to return False on the very beggining, if that's not correct type of transaction, so maybe that's irrelevant?
+NOTE4: But we'll collect more keys, as not all inputs of a transaction are of the same type.
+NOTE5: Should I implement it and compare runtime?
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Work around different sighash flags (now only [ALL], but SIGHASH_ANYONECANPAY and others should be there as well).
 ------------------------------------------------------------------------------------------------------------------------------
