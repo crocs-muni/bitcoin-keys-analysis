@@ -11,6 +11,8 @@ class Parser:
     saved_data = {}
     unmatched_data = {}
 
+    DICTS = [(saved_data, "ecdsa_data"), (unmatched_data, "unmatched_ecdsa_data")]
+
     ECDSA_SIG_LENGTHS = (148, 146, 144, 142, 140)   # Lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
     ECDSA_PUBKEY_LENGTHS = (66, 130)
 
@@ -378,18 +380,32 @@ class Parser:
                 toreturn = True
 
         return toreturn
-    
-    # This functions simply flush collected data to a JSON file.
-    def flush_saved_data(self, file_name):
-        with open(file_name, 'w') as outfile:
-            json.dump(Parser.saved_data, outfile, indent = 2)
-        Parser.saved_data = {}
 
-    def flush_unmatched(self, file_name):
-        with open(file_name, 'w') as outfile:
-            json.dump(Parser.unmatched_data, outfile, indent = 2)
-        Parser.unmatched_data = {}
 
+    def data_dict_full(self, data_dict):
+        # Maximum key count to store in RAM before flushing to JSON. You can set much more, depends on your RAM size.
+        # Guess it, or use my formula below.
+        # Note that 400 B - average length of key record in JSON format (including pubkey, txid, time and sig)
+
+        #RAM_SIZE = 6    # place amount of RAM in GB, that you want to dedicate to the script.
+        #max_key_count = RAM_SIZE * 1024 * 1024 / 400
+        max_key_count = 10000
+
+        return len(data_dict) >= max_key_count
+
+    # Flushes collected data to a JSON file.
+    def flush_data_dict(self, file_name, data_dict):
+        with open(file_name, 'w') as outfile:
+            json.dump(data_dict, outfile, indent = 2)
+        data_dict = {}
+
+    # This functions goes trough all data dictionaries and checks, whether they need to be flushed.
+    # Argument <exception> is a bool value to force flushing: for example, at the very end of the script
+    def flush_if_needed(self, n, exception):
+        for dict_tup in Parser.DICTS: 
+            if Parser.data_dict_full(self, dict_tup[0]) or (exception and dict_tup[0] != {}):
+                file_name = "gathered-data/" + dict_tup[1] + "_" + str(n) + ".txt"
+                Parser.flush_data_dict(self, file_name, dict_tup[0])
 
 
 
@@ -403,8 +419,6 @@ class Parser:
 
         start_time = time.perf_counter()
         for n in range(start, end):
-            file_counter_saved = 0    # counters needed for creating output file names. 
-            file_counter_unmatched = 0
 
             block_hash = rpc.getblockhash(n)
             block_transactions = rpc.getblock(block_hash)['tx']
@@ -420,28 +434,9 @@ class Parser:
                     Parser.failed += 1
                     print("Failed transaction ", transaction_hash)
 
-                # Maximum key count to store in RAM before flushing to JSON. You can set much more, depends on your RAM size.
-                # Guess it, or use my formula below.
-                # Note that 400 B - average length of key record in JSON format (including pubkey, txid, time and sig)
+                Parser.flush_if_needed(self, n, False)
 
-                #RAM_SIZE = 6    # place amount of RAM in GB, that you want to dedicate to the script.
-                #max_key_count = RAM_SIZE * 1024 * 1024 / 400
-
-                max_key_count = 10000
-
-                # It doesn't really matter, if block number in file name and actual block number for a key will differ,
-                #   so the only exception of max_key_count is the very last transaction of the very last block.
-                if len(Parser.saved_data) >= max_key_count or (n == end - 1 and transaction_hash == block_transactions[-1]):
-                    # change names here and below if you need to
-                    file_name = "gathered-data/data_" + str(n) + '_' + str(file_counter_saved) + ".txt"
-                    Parser.flush_saved_data(self, file_name)
-                    file_counter_saved += 1
-
-                if len(Parser.unmatched_data) >= max_key_count or (n == end - 1 and transaction_hash == block_transactions[-1]):
-                    file_name = "gathered-data/unmatched_" + str(n) + '_' + str(file_counter_unmatched) + ".txt"
-                    Parser.flush_unmatched(self, file_name)
-                    file_counter_unmatched += 1
-
+        Parser.flush_if_needed(self, n, True)
         print("\n", "=" * os.get_terminal_size().columns, sep = '')
         print ("Processed ", Parser.inputs, " transactions and gathered ", Parser.keys, " keys: ", Parser.ecdsa, " ECDSA keys, ", \
                 Parser.schnorr," Schnorr Signature keys; in ", time.perf_counter() - start_time,\
