@@ -1,8 +1,6 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
-TODO: Separate JSON files for ECDSA and Schnorr keys.
-------------------------------------------------------------------------------------------------------------------------------
 QUESTION: self.handle_checksig(transaction, vin, script) vs Parser.handle_checksig(self, transaction, vin, script) ?
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: I have doubts about extract_signature_p2pk(). Looking only at the first input seems to be not always right.

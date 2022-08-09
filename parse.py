@@ -8,16 +8,19 @@ class Parser:
     ecdsa = 0
     schnorr = 0
     keys = 0
-    saved_data = {}
-    unmatched_data = {}
+    ecdsa_data = {}
+    unmatched_ecdsa_data = {}
+    schnorr_data = {}
+    unmatched_schnorr_data = {}
 
-    DICTS = [(saved_data, "ecdsa_data"), (unmatched_data, "unmatched_ecdsa_data")]
+    DICTS = [(ecdsa_data, "ecdsa_data"), (unmatched_ecdsa_data, "unmatched_ecdsa_data"),\
+             (schnorr_data, "schnorr_data"), (unmatched_schnorr_data, "unmatched_schnorr_data")]
 
     ECDSA_SIG_LENGTHS = (148, 146, 144, 142, 140)   # Lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
     ECDSA_PUBKEY_LENGTHS = (66, 130)
 
     # Schnorr signature in bitcoin itself is always 64 bytes, but it's possible to set non-default hash_type in 65th byte.
-    #                                                                                   (watch BIP341 - Common signature message)
+    #                                                                                   (see BIP341 - Common signature message)
     SCHNORR_SIG_LENGTHS = (128, 130)
     SCHNORR_PUBKEY_LENGTH = 64
 
@@ -35,17 +38,17 @@ class Parser:
             Parser.schnorr += 1
         Parser.keys += 1
 
-    def add_key_to_saved_data(self, transaction, suspected_key, signature):
-        if suspected_key not in Parser.saved_data.keys():
+    def add_key_to_data_dict(self, transaction, suspected_key, signature, data_dict):
+        if suspected_key not in data_dict.keys():
             Parser.increment_key_count(self, suspected_key)
-            Parser.saved_data[suspected_key] = []
-        Parser.saved_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
+            data_dict[suspected_key] = []
+        data_dict[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
 
-    def add_key_to_unmatched_data(self, transaction, suspected_key, sigs):
-        if suspected_key not in Parser.unmatched_data.keys():
+    def add_key_to_unmatched_data_dict(self, transaction, suspected_key, sigs, data_dict):
+        if suspected_key not in data_dict.keys():
             Parser.increment_key_count(self, suspected_key)
-            Parser.unmatched_data[suspected_key] = []
-        Parser.unmatched_data[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signatures' : sigs})
+            data_dict[suspected_key] = []
+        data_dict[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signatures' : sigs})
 
 
     def extract_signature_p2pkh(self, vin):
@@ -81,7 +84,7 @@ class Parser:
             signature = Parser.extract_signature_p2pkh(self, vin)
 
             if Parser.correct_ecdsa_key(self, suspected_key):
-                Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
+                Parser.add_key_to_data_dict(self, transaction, suspected_key, signature, Parser.ecdsa_data)
                 toreturn = True
 
         return toreturn
@@ -119,7 +122,7 @@ class Parser:
             signature = Parser.extract_signature_p2pk(self, transaction)
 
             if Parser.correct_ecdsa_key(self, suspected_key):
-                Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
+                Parser.add_key_to_data_dict(self, transaction, suspected_key, signature, Parser.ecdsa_data)
                 toreturn = True
 
         for vin in transaction['vin']:
@@ -178,12 +181,17 @@ class Parser:
         if transaction_type == "P2TR":
             signature = Parser.extract_signature_p2tr(self, vin, 0)
 
-        if transaction_type in ("P2SH", "P2WSH") and not Parser.correct_ecdsa_key(self, suspected_key):
-            return False
-        if transaction_type == "P2TR" and not Parser.correct_schnorr_key(self, suspected_key):
-            return False
 
-        Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
+        if transaction_type in ("P2SH", "P2WSH"):
+            if not Parser.correct_ecdsa_key(self, suspected_key):
+                return False
+            Parser.add_key_to_data_dict(self, transaction, suspected_key, signature, Parser.ecdsa_data)
+
+        if transaction_type == "P2TR":
+            if not Parser.correct_schnorr_key(self, suspected_key):
+                return False
+            Parser.add_key_to_data_dict(self, transaction, suspected_key, signature, Parser.schnorr_data)
+        
         return True
 
     # Make me more clean pls
@@ -213,17 +221,28 @@ class Parser:
             suspected_key = script[2:(key_len*2) + 2]
             script = script[((key_len*2) + 2):]
 
+            # Choose dictionary to save data to
+            if num_sigs == num_keys:
+                data_dict = Parser.ecdsa_data
+                if transaction_type == "P2TR":
+                    data_dict = Parser.schnorr_data
+            else:
+                data_dict = Parser.unmatched_ecdsa_data
+                if transaction_type == "P2TR":
+                    data_dict = Parser.unmatched_schnorr_data
+
+
             if (transaction_type in ("P2SH, P2WSH") and Parser.correct_ecdsa_key(self, suspected_key))\
             or (transaction_type == "P2TR" and Parser.correct_schnorr_key(self, suspected_key)):
                 if num_sigs == num_keys:
-                    Parser.add_key_to_saved_data(self, transaction, suspected_key, sigs[i])
+                    Parser.add_key_to_data_dict(self, transaction, suspected_key, sigs[i], data_dict)
                 else:
-                    Parser.add_key_to_unmatched_data(self, transaction, suspected_key, sigs)
+                    Parser.add_key_to_unmatched_data_dict(self, transaction, suspected_key, sigs, data_dict)
                 toreturn = True
 
         return toreturn
 
-    # This function <<saves>> found data (if any) to Parser.saved_data or Parser.unmatched_data.
+    # This function <<saves>> found data (if any) to data dictionaries.
     # Returns true at least one key was extracted.
     # Note that <transaction_type> argument is one of these: "P2SH", "P2WSH", "P2TR".
     def parse_serialized_script(self, transaction, vin, script, transaction_type):
@@ -286,7 +305,7 @@ class Parser:
             signature = Parser.extract_signature_p2wpkh(self, vin)
 
             if Parser.correct_ecdsa_key(self, suspected_key):
-                Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
+                Parser.add_key_to_data_dict(self, transaction, suspected_key, signature, Parser.ecdsa_data)
                 toreturn = True
 
         return toreturn
@@ -331,10 +350,9 @@ class Parser:
                                                                     # And the second one is a public key.
 
         if not Parser.correct_schnorr_key(self, suspected_key):
-            print("Failed p2tr vout: suspected key (", suspected_key, ") is not ", Parser.SCHNORR_PUBKEY_LENGTH/2, " bytes long!", sep = '')
             return False
 
-        Parser.add_key_to_saved_data(self, transaction, suspected_key, signature)
+        Parser.add_key_to_data_dict(self, transaction, suspected_key, signature, Parser.schnorr_data)
         return True
 
 
@@ -351,7 +369,7 @@ class Parser:
         suspected_key = control_block[:64]
 
         if Parser.correct_schnorr_key(self, suspected_key):
-            Parser.add_key_to_saved_data(self, transaction, suspected_key, "NaN")
+            Parser.add_key_to_data_dict(self, transaction, suspected_key, "NaN", Parser.schnorr_data)
             toreturn = True
 
         script = vin["txinwitness"][-2]
