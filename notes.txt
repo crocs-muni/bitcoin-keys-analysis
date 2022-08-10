@@ -1,6 +1,8 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
+NOTE: In prepare_keys.py cut Schnorr keys to 16 bytes or less?
+------------------------------------------------------------------------------------------------------------------------------
 QUESTION: self.handle_checksig(transaction, vin, script) vs Parser.handle_checksig(self, transaction, vin, script) ?
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: I have doubts about extract_signature_p2pk(). Looking only at the first input seems to be not always right.
