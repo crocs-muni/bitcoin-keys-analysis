@@ -1,3 +1,5 @@
+#!/bin/python3
+
 import json, os
 k = set()
 for filename in os.listdir(os.curdir):
