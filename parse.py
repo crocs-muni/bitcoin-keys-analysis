@@ -379,13 +379,28 @@ class Parser:
 
         return toreturn
 
+    def handle_p2tr_vout(self, transaction, vout):
+        if (not "scriptPubKey" in vout.keys()) or (len(vout["scriptPubKey"]["asm"].split(' ')) != 2):
+            return False
+
+        scriptpubkey = vout["scriptPubKey"]["asm"].split(' ')
+        if scriptpubkey[0] != '1': # Version byte
+            return False
+
+        suspected_key = scriptpubkey[1]
+        if not Parser.correct_schnorr_key(self, suspected_key):
+            return False
+
+        Parser.add_key_to_data_dict(self, transaction, suspected_key, "NaN", Parser.schnorr_data)
+        return True
+
 
     # Essential to read. From Pieter Wuille, author of P2TR.
     """ https://bitcoin.stackexchange.com/questions/107154/what-is-the-control-block-in-taproot/107159#107159 """
     def process_transaction_p2tr(self, transaction, rpc):
         toreturn = False
 
-        for vin in transaction['vin']:
+        for vin in transaction["vin"]:
 
             if not 'txinwitness' in vin.keys() or len(vin['txinwitness']) == 0:
                 continue
@@ -395,6 +410,12 @@ class Parser:
                     toreturn = True
 
             elif Parser.handle_p2tr_scriptpath(self, transaction, vin):
+                toreturn = True
+
+
+        for vout in transaction["vout"]:
+
+            if Parser.handle_p2tr_vout(self, transaction, vout):
                 toreturn = True
 
         return toreturn

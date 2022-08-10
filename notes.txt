@@ -1,21 +1,24 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: In prepare_keys.py cut Schnorr keys to 16 bytes or less?
-------------------------------------------------------------------------------------------------------------------------------
-QUESTION: self.handle_checksig(transaction, vin, script) vs Parser.handle_checksig(self, transaction, vin, script) ?
-------------------------------------------------------------------------------------------------------------------------------
-NOTE: I have doubts about extract_signature_p2pk(). Looking only at the first input seems to be not always right.
-------------------------------------------------------------------------------------------------------------------------------
 NOTE: I have some doubts about the if statement, where all extractors run.. Wouldn't it be better, if extractors ran on a concrete input, rather than whole transaction?
 NOTE2: Faster, because we run only one process_p2xxx function, but slower, because we have to look at the previous transaction vout.
 NOTE3: Process_p2xxx() seems to return False on the very beggining, if that's not correct type of transaction, so maybe that's irrelevant?
 NOTE4: But we'll collect more keys, as not all inputs of a transaction are of the same type.
 NOTE5: Should I implement it and compare runtime?
 ------------------------------------------------------------------------------------------------------------------------------
+IDEA: Tailor all the scripts so that analysis could run in real time (non-stop).
+------------------------------------------------------------------------------------------------------------------------------
+NOTE: In prepare_keys.py cut Schnorr keys to 16 bytes or less?
+------------------------------------------------------------------------------------------------------------------------------
+QUESTION: self.handle_checksig(transaction, vin, script) vs Parser.handle_checksig(self, transaction, vin, script) ?
+------------------------------------------------------------------------------------------------------------------------------
+NOTE: I have doubts about extract_signature_p2pk(). Looking only at the first input seems to be not always right.
+------------------------------------------------------------------------------------------------------------------------------
 NOTE: Work around different sighash flags (now only [ALL], but SIGHASH_ANYONECANPAY and others should be there as well).
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: Script can not parse P2SH and P2WSH transactions, where:
+NOTE: Review/rewrite handle_checksig() and handle_checkmultisig().
+NOTE2: Script can not parse P2SH and P2WSH transactions, where:
     1) OP_CHECKSIG or OP_CHECKMULTISIG are not at the end. Example (txid):
         208a95aff0c4243fdc7c610b700e1eb6a19bb786f3d96d79ecd410183f067687
         505a42d01dd26f002d5c1ba52debb15cc88f315740a239c70be996285ccccb6d
@@ -28,7 +31,3 @@ However, this is only a small percent of transactions, and this is not urgent, s
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Verbosity mode - print what exactly failed and what succeded.
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: Review/rewrite handle_checksig() and handle_checkmultisig().
------------------------------------------------------------------------------------------------------------------------------
-NOTE: So.. Should we collect pubkey's and txid's only?
------------------------------------------------------------------------------------------------------------------------------
