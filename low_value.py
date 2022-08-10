@@ -1,10 +1,15 @@
+#!/bin/python3
 import os
+
 gathered_keys = set()
-num_keys = os.path.getsize("keys_set") // 16
-f = open("keys_set", "rb")
+ECDSA_KEY_SET = "/home/xyakimo1/crocs/gathered-data/binary_key_sets/ecdsa_key_set"
+num_keys = os.path.getsize(ECDSA_KEY_SET) // 16
+
+f = open(ECDSA_KEY_SET, "rb")
 g = open("found_low_value", "w")
 for i in range (num_keys):
 	gathered_keys.add(f.read(16))
+f.close()
 
 p = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f
 K = GF(p)
