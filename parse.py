@@ -122,12 +122,25 @@ class Parser:
     # Locking script: contains public key followed by Checksig OP code
     # returns true if key was extracted or if spending of this output was detected and only signature is likely present. Other extractors MUST run prior in case output has something valuable
 
-    # Rewrite me pls
-    def process_input_p2pk(self, transaction, vin):
+    def get_previous_vout(self, vin):
+        prev_transaction_id = vin["txid"]
+        prev_transaction = Parser.rpc.getrawtransaction(prev_transaction_id, True)
+        vout_num = vin["vout"]
+        vout = prev_transaction["vout"][vout_num]
+        return vout
 
-        if not ('scriptSig' in vin.keys() and len(vin['scriptSig']['hex']) in Parser.ECDSA_SIG_LENGTHS):
+    def process_input_p2pk(self, transaction, vin):
+        if not (('scriptSig' in vin.keys() and len(vin['scriptSig']['hex'][2:-2]) in Parser.ECDSA_SIG_LENGTHS)):
             return False
 
+        signature = vin['scriptSig']['hex'][2:-2]
+        vout = Parser.get_previous_vout(self, vin)
+        suspected_key = vout["scriptPubKey"]["asm"].split(' ')[0]
+
+        if not Parser.correct_ecdsa_key(self, suspected_key):
+            return False
+
+        Parser.add_key_to_data_dict(self, transaction, suspected_key, signature, Parser.ecdsa_data)
         return True
 
 
@@ -323,11 +336,7 @@ class Parser:
 
     def handle_p2tr_keypath(self, transaction, vin):
         signature = Parser.extract_signature_p2tr(self, vin, 0)
-
-        prev_transaction_id = vin["txid"]
-        prev_transaction = Parser.rpc.getrawtransaction(prev_transaction_id, True)
-        vout_num = vin["vout"]
-        vout = prev_transaction["vout"][vout_num]
+        vout = Parser.get_previous_vout(self, vin)
 
         if "scriptPubKey" not in vout.keys():
             return False                                                    # This two if's are not necessary,

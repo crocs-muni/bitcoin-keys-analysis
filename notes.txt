@@ -1,9 +1,7 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
-<TODO1>: I have some doubts about the if statement, where all extractors run.. Wouldn't it be better, if extractors ran on concrete inputs and outputs, rather than whole transaction?
-------------------------------------------------------------------------------------------------------------------------------
-<TODO2>: Tests parse.py.
+<TODO>: Tests parse.py, REVIEW WHOLE SCRIPT.
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: parse.py type hints:
     def greeting(name: str) -> str:
