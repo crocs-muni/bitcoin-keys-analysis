@@ -3,11 +3,18 @@
 import bitcoin, bitcoin.rpc, struct, time, os, json
 
 class Parser:
-    failed = 0
+    blocks = 0              # Number of blocks, that were passed to the script. Same with transactions, inputs (vin's) and outputs (vout's).
+    transactions = 0
     inputs = 0
+    outputs = 0
+
+    failed_inputs = 0       # Number of transaction inputs, in which we weren't able to find any public keys.
+    successful_outputs = 0  # Transaction outputs usually don't store public keys,
+                            # so we don't count failed outputs, but the successful ones just as a bonus.
     ecdsa = 0
     schnorr = 0
     keys = 0
+
     ecdsa_data = {}
     unmatched_ecdsa_data = {}
     schnorr_data = {}
@@ -70,7 +77,7 @@ class Parser:
     # ScriptSig: contains signature and public key
     # Locking script: contains hash of public key
     # returns true if key was extracted
-    def process_transaction_p2pkh(self, transaction):
+    def process_input_p2pkh(self, transaction):
         toreturn = False
         for vin in transaction['vin']:
 
@@ -108,7 +115,7 @@ class Parser:
     # ScriptSig: Either not here (mining) or includes signature
     # Locking script: contains public key followed by Checksig OP code
     # returns true if key was extracted or if spending of this output was detected and only signature is likely present. Other extractors MUST run prior in case output has something valuable
-    def process_transaction_p2pk(self, transaction):
+    def process_input_p2pk(self, transaction):
         toreturn = False
         for vout in transaction['vout']:
 
@@ -264,7 +271,7 @@ class Parser:
     # ScriptSig: Contains signatures. Last entry is the unlocking script that needs to be further parsed to extract public key
     # Locking script: contains a few instructions and hash of script that unlocks the spending
     # returns true if key was extracted
-    def process_transaction_p2sh(self, transaction):
+    def process_input_p2sh(self, transaction):
         toreturn = False
         for vin in transaction['vin']:
             if not 'scriptSig' in vin.keys():
@@ -291,7 +298,7 @@ class Parser:
     # We do not care about scriptPubKey or Sigscript in this case
     # Segwith contains signature and public key
     # returns true if key was extracted
-    def process_transaction_p2wpkh(self, transaction):
+    def process_input_p2wpkh(self, transaction):
         toreturn = False
         for vin in transaction['vin']:
 
@@ -314,7 +321,7 @@ class Parser:
     # This function tries to process a Pay to Witness Script Hash transaction. Those are very new SegWit transactions for Lightning L2 transactions underlaying settlement
     # Segwith contains signature(s) and script
     # returns true if key was extracted
-    def process_transaction_p2wsh(self, transaction):
+    def process_input_p2wsh(self, transaction):
         toreturn = False
         for vin in transaction['vin']:
 
@@ -397,7 +404,7 @@ class Parser:
 
     # Essential to read. From Pieter Wuille, author of P2TR.
     """ https://bitcoin.stackexchange.com/questions/107154/what-is-the-control-block-in-taproot/107159#107159 """
-    def process_transaction_p2tr(self, transaction, rpc):
+    def process_input_p2tr(self, transaction, rpc):
         toreturn = False
 
         for vin in transaction["vin"]:
@@ -447,6 +454,41 @@ class Parser:
                 Parser.flush_data_dict(self, file_name, dict_tup[0])
 
 
+    def process_inputs(self, transaction):
+        for i in range(len(transaction["vin"])):
+            vin = transaction["vin"][i]
+            try:
+
+                # Run all extractors in turn, stop on success.
+                if not (Parser.process_input_p2wpkh(self, vin) or \
+                        Parser.process_input_p2wsh(self, vin) or \
+                        Parser.process_input_p2tr(self, vin, rpc) or \
+                        Parser.process_input_p2sh(self, vin) or \
+                        Parser.process_input_p2pkh(self, vin) or \
+                        Parser.process_input_p2pk(self, vin) or \
+                        ('coinbase' in transaction['vin'][0].keys())): # Coinbase input, so don't count as failed.
+
+                    Parser.failed_inputs += 1
+                    print("Failed transaction input: ", transaction_hash, ":", i, sep = '')
+
+            except (ValueError, IndexError) as e:
+                Parser.failed_inputs += 1
+                print("Failed transaction input: ", transaction_hash, ":", i, sep = '')
+
+
+    def process_block(self, n):
+        Parser.blocks += 1
+        block_hash = rpc.getblockhash(n)
+        block_transactions = rpc.getblock(block_hash)['tx']
+
+        for transaction_hash in block_transactions:
+
+            Parser.transactions += 1
+            transaction = rpc.getrawtransaction(transaction_hash, True) # Getting transaction in verbose format
+
+            Parser.process_inputs(self, transaction)
+            Parser.process_outputs(self, transaction)
+
 
     # Main functions, takes natural numbers start, end which are the indexes of Bitcoin blocks
     # if start is 0, then the parsing starts at the genesis block
@@ -459,14 +501,10 @@ class Parser:
         start_time = time.perf_counter()
         for n in range(start, end):
 
-            block_hash = rpc.getblockhash(n)
-            block_transactions = rpc.getblock(block_hash)['tx']
             for transaction_hash in block_transactions: # iterating over all transactions in a block
-                Parser.inputs += 1
-                transaction = rpc.getrawtransaction(transaction_hash, True) # Getting transaction in verbose format to get all the needed parsed details
                 try:
                     # Running all extractors, last check is if transaction is new version of mining and contains no public key, only hash of miner pub key
-                    if not (Parser.process_transaction_p2pkh(self, transaction) or Parser.process_transaction_p2tr(self, transaction, rpc) or Parser.process_transaction_p2sh(self, transaction) or Parser.process_transaction_p2wpkh(self, transaction) or Parser.process_transaction_p2wsh(self, transaction) or Parser.process_transaction_p2pk(self, transaction) or ('coinbase' in transaction['vin'][0].keys())):
+                    if not (Parser.process_input_p2pkh(self, transaction) or Parser.process_input_p2tr(self, transaction, rpc) or Parser.process_input_p2sh(self, transaction) or Parser.process_input_p2wpkh(self, transaction) or Parser.process_input_p2wsh(self, transaction) or Parser.process_input_p2pk(self, transaction) or ('coinbase' in transaction['vin'][0].keys())):
                         Parser.failed += 1
                         print("Failed transaction ", transaction_hash)
                 except (ValueError, IndexError) as e:
@@ -484,4 +522,4 @@ class Parser:
 
 #Example of use:
 parser = Parser()
-parser.process_blocks(739000, 739001)
+parser.process_blocks(709635, 709636)
