@@ -8,7 +8,7 @@ num_keys = os.path.getsize(ECDSA_KEY_SET) // 16
 f = open(ECDSA_KEY_SET, "rb")
 g = open("found_low_value", "w")
 for i in range (num_keys):
-	gathered_keys.add(f.read(16))
+    gathered_keys.add(f.read(16))
 f.close()
 
 p = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f
@@ -21,10 +21,10 @@ E.set_order(0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141 *
 
 X = 0*G
 for i in range(2**32):
-	X = X + G
-	temp = bytes.fromhex(Integer((X).xy()[0]).hex()[:32])
-	if temp in gathered_keys:
-		g.write(str(i) + "\n")
-	if (i % 100000) == 0:
-		print(i)
+    X = X + G
+    temp = bytes.fromhex(Integer((X).xy()[0]).hex()[:32])
+    if temp in gathered_keys:
+        g.write(str(i) + "\n")
+    if (i % 100000) == 0:
+        print(i)
 g.close()

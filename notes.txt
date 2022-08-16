@@ -1,13 +1,14 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: I have some doubts about the if statement, where all extractors run.. Wouldn't it be better, if extractors ran on a concrete input, rather than whole transaction?
-NOTE2: Faster, because we run only one process_p2xxx function, but slower, because we have to look at the previous transaction vout.
-NOTE3: Process_p2xxx() seems to return False on the very beggining, if that's not correct type of transaction, so maybe that's irrelevant?
-NOTE4: But we'll collect more keys, as not all inputs of a transaction are of the same type.
-NOTE5: Should I implement it and compare runtime?
+<TODO1>: I have some doubts about the if statement, where all extractors run.. Wouldn't it be better, if extractors ran on concrete inputs and outputs, rather than whole transaction?
 ------------------------------------------------------------------------------------------------------------------------------
-IDEA: Tailor all the scripts so that analysis could run in real time (non-stop).
+<TODO2>: Tests parse.py.
+------------------------------------------------------------------------------------------------------------------------------
+NOTE: Rewrite p2tr.
+NOTE2: MAST control block. (Look at Bitcoin Core source code, Sparrow wallets).
+------------------------------------------------------------------------------------------------------------------------------
+PLAN: Tailor all the scripts so that analysis could run in real time (non-stop).
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: In prepare_keys.py cut Schnorr keys to 16 bytes or less?
 ------------------------------------------------------------------------------------------------------------------------------
