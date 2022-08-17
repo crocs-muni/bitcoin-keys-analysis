@@ -7,7 +7,7 @@ class Parser:
     # change path to bitcoin.conf if you have different data structure
     # raw Proxy takes commands in hexa strings instead of structs, that is what we need
     bitcoin.SelectParams("mainnet")  # we will be using the production blockchain
-    rpc = bitcoin.rpc.RawProxy(btc_conf_file=os.path.join(os.getcwd(), ".bitcoin-data/bitcoin.conf"))
+    rpc = bitcoin.rpc.RawProxy(btc_conf_file="/home/xyakimo1/crocs/.bitcoin-data/bitcoin.conf")
 
     blocks = 0              # Number of blocks, that were passed to the script. Same with transactions, inputs (vin's) and outputs (vout's).
     transactions = 0
@@ -490,8 +490,10 @@ class Parser:
 
         Parser.flush_if_needed(self, n, True)
 
+
 #Example of use:
-parser = Parser()
-start_time = time.perf_counter()
-parser.process_blocks(739000, 739001)
-parser.print_statistics(start_time)
+if __name__ == "__main__":
+    parser = Parser()
+    start_time = time.perf_counter()
+    parser.process_blocks(739000, 739001)
+    parser.print_statistics(start_time)
