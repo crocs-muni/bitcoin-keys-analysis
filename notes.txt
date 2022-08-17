@@ -17,8 +17,6 @@ QUESTION: self.handle_checksig(transaction, vin, script) vs Parser.handle_checks
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: I have doubts about extract_signature_p2pk(). Looking only at the first input seems to be not always right.
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: Work around different sighash flags (now only [ALL], but SIGHASH_ANYONECANPAY and others should be there as well).
-------------------------------------------------------------------------------------------------------------------------------
 NOTE: Review/rewrite handle_checksig() and handle_checkmultisig().
 NOTE2: Script can not parse P2SH and P2WSH transactions, where:
     1) OP_CHECKSIG or OP_CHECKMULTISIG are not at the end. Example (txid):

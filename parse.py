@@ -74,11 +74,9 @@ class Parser:
 
     def extract_signature_p2pkh(self, vin):
 
-        signature = vin['scriptSig']['asm'].split(" ")[0]
-        signature = signature.replace("[ALL]", "")
-        # A function like remove_sighash_flags() is needed, which will remove all flags, not only [ALL].
-        # But idk what are they in Bitcoin Core asm format. 
-        # Or just cut off last byte?
+        signature = vin['scriptSig']['hex']
+        length = int(signature[:2], 16) # len of signature in bytes
+        signature = signature[2: 2 + length*2]
 
         if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
             #print("[P2PKH] Failed signature:", signature)
@@ -93,14 +91,14 @@ class Parser:
     # returns true if key was extracted
     def process_input_p2pkh(self, transaction, vin):
 
-        if not 'scriptSig' in vin.keys() or len(vin['scriptSig']['asm'].split(" ")) < 2:
+        if not 'scriptSig' in vin.keys() or len(vin['scriptSig']['asm'].split(" ")) != 2:
             return False
  
         suspected_key = vin['scriptSig']['asm'].split(" ")[1]
-        signature = Parser.extract_signature_p2pkh(self, vin)
-
         if not Parser.correct_ecdsa_key(self, suspected_key):
             return False
+
+        signature = Parser.extract_signature_p2pkh(self, vin)
 
         Parser.add_key_to_data_dict(self, transaction, suspected_key, signature, Parser.ecdsa_data)
         return True
