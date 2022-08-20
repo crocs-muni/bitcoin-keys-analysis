@@ -3,15 +3,10 @@ This file is to write down some [potentional] issues and things to do later. Jus
 ------------------------------------------------------------------------------------------------------------------------------
 <TODO>: Tests parse.py, REVIEW WHOLE SCRIPT.
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: parse.py type hints:
-    def greeting(name: str) -> str:
-------------------------------------------------------------------------------------------------------------------------------
 NOTE: Rewrite p2tr.
 NOTE2: MAST control block. (Look at Bitcoin Core source code, Sparrow wallets).
 ------------------------------------------------------------------------------------------------------------------------------
 PLAN: Tailor all the scripts so that analysis could run in real time (non-stop).
-------------------------------------------------------------------------------------------------------------------------------
-NOTE: In prepare_keys.py cut Schnorr keys to 16 bytes or less?
 ------------------------------------------------------------------------------------------------------------------------------
 QUESTION: self.handle_checksig(transaction, vin, script) vs Parser.handle_checksig(self, transaction, vin, script) ?
 ------------------------------------------------------------------------------------------------------------------------------
@@ -28,6 +23,8 @@ NOTE2: Script can not parse P2SH and P2WSH transactions, where:
 
 Full rewrite of parsing serialized script is needed in order to solve it.
 However, this is only a small percent of transactions, and this is not urgent, so I will try to deal with it later, if it turns out to be reasonable to do..
+------------------------------------------------------------------------------------------------------------------------------
+NOTE: In prepare_keys.py cut Schnorr keys to 16 bytes or less?
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Verbosity mode - print what exactly failed and what succeded.
 ------------------------------------------------------------------------------------------------------------------------------

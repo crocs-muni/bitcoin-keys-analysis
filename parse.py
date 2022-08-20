@@ -72,14 +72,13 @@ class Parser:
         data_dict[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signatures' : sigs})
 
 
-    def extract_signature_p2pkh(self, vin):
+    def extract_signature_p2pk_p2pkh(self, vin):
 
         signature = vin['scriptSig']['hex']
         length = int(signature[:2], 16) # len of signature in bytes
         signature = signature[2: 2 + length*2]
 
         if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
-            #print("[P2PKH] Failed signature:", signature)
             signature = "NaN"
 
         return signature
@@ -98,22 +97,11 @@ class Parser:
         if not Parser.correct_ecdsa_key(self, suspected_key):
             return False
 
-        signature = Parser.extract_signature_p2pkh(self, vin)
+        signature = Parser.extract_signature_p2pk_p2pkh(self, vin)
 
         Parser.add_key_to_data_dict(self, transaction, suspected_key, signature, Parser.ecdsa_data)
         return True
 
-    def extract_signature_p2pk(self, transaction):
-
-        if not "scriptSig" in transaction["vin"][0].keys():
-            return "NaN"
-
-        signature = transaction['vin'][0]['scriptSig']['hex']
-        if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
-            #print("[P2PK] Failed signature:", signature)
-            signature = "NaN"
-
-        return signature
 
     # This function tries to process a Pay to Public Key transaction. Those are mostly old transaction mining BTC
     # ScriptSig: Either not here (mining) or includes signature
@@ -128,10 +116,13 @@ class Parser:
         return vout
 
     def process_input_p2pk(self, transaction, vin):
-        if not (('scriptSig' in vin.keys() and len(vin['scriptSig']['hex'][2:-2]) in Parser.ECDSA_SIG_LENGTHS)):
+        if not 'scriptSig' in vin.keys():
             return False
 
-        signature = vin['scriptSig']['hex'][2:-2]
+        signature = Parser.extract_signature_p2pk_p2pkh(self, vin)
+        if signature == "NaN": # If there is no signature, there is no sense in looking up the corresponding public key.
+            return False
+
         vout = Parser.get_previous_vout(self, vin)
         suspected_key = vout["scriptPubKey"]["asm"].split(' ')[0]
 
