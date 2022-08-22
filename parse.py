@@ -148,20 +148,24 @@ class Parser:
         return True
 
 
-    # I suppose these two functions can be merged into one?
-    def extract_signature_p2sh_checksig(self, vin):
-        signature = vin['scriptSig']['asm'].split("[ALL] ")[0].split(" ")[1] # Skipping an extra zero here that was added due to bugs
+    # In case of checksig pass i = 0, same for p2wsh and p2tr
+    def extract_signature_p2sh(self, vin, i):
+        script_sig = vin["scriptSig"]["hex"]
+        if script_sig[:2] == "00":
+            script_sig = script_sig[2:]
+
+        sigs = []
+        while script_sig[:2] != "04" and script_sig != "":   # 0x04 is hex of OP_PUSHDATA1 after which redeem script goes
+            length = int(script_sig[:2], 16)
+            signature = script_sig[2: 2 + length*2]
+            sigs.append(signature)
+            script_sig = script_sig[2 + length*2:]
+
+        signature = sigs[i]
         if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
             signature = "NaN"
         return signature
 
-    def extract_signature_p2sh_multisig(self, vin, i):
-        signature = vin['scriptSig']['asm'].replace("[ALL]", "").split(" ")[i+1] # Skipping over the first 0 here as well
-        if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
-            signature = "NaN"
-        return signature
-
-    # In case of checksig pass i = 0, same for p2tr
     def extract_signature_p2wsh(self, vin, i):
         signature = vin['txinwitness'][i + 1] # Skipping the empty item
         if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
@@ -188,7 +192,7 @@ class Parser:
             suspected_key = script[:-2]
 
         if transaction_type == "P2SH":
-            signature = Parser.extract_signature_p2sh_checksig(self, vin)
+            signature = Parser.extract_signature_p2sh(self, vin, 0)
         if transaction_type == "P2WSH":
             signature = Parser.extract_signature_p2wsh(self, vin, 0)
         if transaction_type == "P2TR":
@@ -222,7 +226,7 @@ class Parser:
         for j in range(num_sigs):
 
                 if transaction_type == "P2SH":
-                    signature = Parser.extract_signature_p2sh_multisig(self, vin, j)
+                    signature = Parser.extract_signature_p2sh(self, vin, j)
                 if transaction_type == "P2WSH":
                     signature = Parser.extract_signature_p2wsh(self, vin, j)
                 if transaction_type == "P2TR":
