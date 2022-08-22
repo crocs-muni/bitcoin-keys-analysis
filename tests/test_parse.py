@@ -55,3 +55,27 @@ def test_increment_key_count(suspected_key: str, expected_ecdsa: int, expected_s
 def test_extract_signature_p2pk_p2pkh(txid: str, vin_n: int, expected_signature: str):
     vin = parser.rpc.getrawtransaction(txid, True)["vin"][vin_n]
     assert parser.extract_signature_p2pk_p2pkh(vin) == expected_signature
+
+
+@pytest.mark.parametrize("txid, vin_n, expected_result, expected_dict", [
+    ("ce6fb9e782df2f5dbd4190069c3ec31ccf1ea2429b890da3c2b12ef37037a5be", 0, True,
+        {
+            "0337108c8c782b2dac8dafbab92a3a76871587c67f93e5ebd3f7c40ca3d4050472":
+            [
+                {
+                    "ID": "ce6fb9e782df2f5dbd4190069c3ec31ccf1ea2429b890da3c2b12ef37037a5be",
+                    "time": 1632990364,
+                    "signature": "304402207ebfd1151a2bb59336bb66b58164a8c17ea99b4a3c70f30056048d94d4532c11022070d4b82892bb2d809e6ec34adefd6669bbfdd50751e2ade7ab494a62a9e8d04401"
+                }
+
+            ]
+        }
+    ),
+    ("1e3c85f59802e3907a254766fd466e308888bf3fcaa0723a9599b8ff41028503", 0, False, {})
+                                                         ])
+def test_process_input_p2pkh(txid: str, vin_n: int, expected_result: bool, expected_dict: dict):
+    parser.ecdsa_data = {}
+    transaction = parser.rpc.getrawtransaction(txid, True)
+    vin = transaction["vin"][vin_n]
+    assert parser.process_input_p2pkh(transaction, vin) == expected_result
+    assert parser.ecdsa_data == expected_dict
