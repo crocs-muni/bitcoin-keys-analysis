@@ -22,10 +22,10 @@ class Parser:
 
     def print_statistics(self, start_time):
         print("\n", "=" * os.get_terminal_size().columns, sep = '')
-        print ("Gathered ", Parser.keys, " keys: ", Parser.ecdsa, " ECDSA keys, ", \
-                Parser.schnorr," Schnorr Signature keys; in ", time.perf_counter() - start_time, " seconds.")
-        print("Failed to parse ", Parser.failed_inputs, " inputs ( {:0.2f}".format(Parser.failed_inputs/Parser.inputs*100),\
-               "%) and ", Parser.failed_outputs, " outputs ( {:0.2f}".format(Parser.failed_outputs/Parser.outputs*100), "%).")
+        print ("Gathered ", self.keys, " keys: ", self.ecdsa, " ECDSA keys, ", \
+                self.schnorr," Schnorr Signature keys; in ", time.perf_counter() - start_time, " seconds.")
+        print("Failed to parse ", self.failed_inputs, " inputs ( {:0.2f}".format(self.failed_inputs/self.inputs*100),\
+               "%) and ", self.failed_outputs, " outputs ( {:0.2f}".format(self.failed_outputs/self.outputs*100), "%).")
         print("=" * os.get_terminal_size().columns)
 
 
@@ -46,28 +46,28 @@ class Parser:
     SCHNORR_PUBKEY_LENGTH = 64
 
     def correct_ecdsa_key(self, suspected_key):
-        return (len(suspected_key) in Parser.ECDSA_PUBKEY_LENGTHS) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4'))
+        return (len(suspected_key) in self.ECDSA_PUBKEY_LENGTHS) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4'))
 
     def correct_schnorr_key(self, suspected_key):
-        return len(suspected_key) == Parser.SCHNORR_PUBKEY_LENGTH
+        return len(suspected_key) == self.SCHNORR_PUBKEY_LENGTH
 
 
     def increment_key_count(self, suspected_key):
-        if len(suspected_key) in Parser.ECDSA_PUBKEY_LENGTHS:
-            Parser.ecdsa += 1
-        if len(suspected_key) == Parser.SCHNORR_PUBKEY_LENGTH:
-            Parser.schnorr += 1
-        Parser.keys += 1
+        if len(suspected_key) in self.ECDSA_PUBKEY_LENGTHS:
+            self.ecdsa += 1
+        if len(suspected_key) == self.SCHNORR_PUBKEY_LENGTH:
+            self.schnorr += 1
+        self.keys += 1
 
     def add_key_to_data_dict(self, transaction, suspected_key, signature, data_dict):
         if suspected_key not in data_dict.keys():
-            Parser.increment_key_count(self, suspected_key)
+            self.increment_key_count(suspected_key)
             data_dict[suspected_key] = []
         data_dict[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
 
     def add_key_to_unmatched_data_dict(self, transaction, suspected_key, sigs, data_dict):
         if suspected_key not in data_dict.keys():
-            Parser.increment_key_count(self, suspected_key)
+            self.increment_key_count(suspected_key)
             data_dict[suspected_key] = []
         data_dict[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signatures' : sigs})
 
@@ -78,7 +78,7 @@ class Parser:
         length = int(signature[:2], 16) # len of signature in bytes
         signature = signature[2: 2 + length*2]
 
-        if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
+        if len(signature) not in self.ECDSA_SIG_LENGTHS:
             signature = "NaN"
 
         return signature
@@ -94,12 +94,12 @@ class Parser:
             return False
  
         suspected_key = vin['scriptSig']['asm'].split(" ")[1]
-        if not Parser.correct_ecdsa_key(self, suspected_key):
+        if not self.correct_ecdsa_key(suspected_key):
             return False
 
-        signature = Parser.extract_signature_p2pk_p2pkh(self, vin)
+        signature = self.extract_signature_p2pk_p2pkh(vin)
 
-        Parser.add_key_to_data_dict(self, transaction, suspected_key, signature, Parser.ecdsa_data)
+        self.add_key_to_data_dict(transaction, suspected_key, signature, self.ecdsa_data)
         return True
 
 
@@ -110,7 +110,7 @@ class Parser:
 
     def get_previous_vout(self, vin):
         prev_transaction_id = vin["txid"]
-        prev_transaction = Parser.rpc.getrawtransaction(prev_transaction_id, True)
+        prev_transaction = self.rpc.getrawtransaction(prev_transaction_id, True)
         vout_num = vin["vout"]
         vout = prev_transaction["vout"][vout_num]
         return vout
@@ -119,17 +119,17 @@ class Parser:
         if not 'scriptSig' in vin.keys():
             return False
 
-        signature = Parser.extract_signature_p2pk_p2pkh(self, vin)
+        signature = self.extract_signature_p2pk_p2pkh(vin)
         if signature == "NaN": # If there is no signature, there is no sense in looking up the corresponding public key.
             return False
 
-        vout = Parser.get_previous_vout(self, vin)
+        vout = self.get_previous_vout(vin)
         suspected_key = vout["scriptPubKey"]["asm"].split(' ')[0]
 
-        if not Parser.correct_ecdsa_key(self, suspected_key):
+        if not self.correct_ecdsa_key(suspected_key):
             return False
 
-        Parser.add_key_to_data_dict(self, transaction, suspected_key, signature, Parser.ecdsa_data)
+        self.add_key_to_data_dict(transaction, suspected_key, signature, self.ecdsa_data)
         return True
 
 
@@ -139,12 +139,12 @@ class Parser:
             return False
 
         suspected_key = vout['scriptPubKey']['asm'].split(" OP_CHECKSIG")[0]
-        signature = Parser.extract_signature_p2pk(self, transaction)
+        signature = self.extract_signature_p2pk(transaction)
 
-        if not Parser.correct_ecdsa_key(self, suspected_key):
+        if not Parse.correct_ecdsa_key(suspected_key):
             return False
 
-        Parser.add_key_to_data_dict(self, transaction, suspected_key, signature, Parser.ecdsa_data)
+        self.add_key_to_data_dict(transaction, suspected_key, signature, self.ecdsa_data)
         return True
 
 
@@ -162,13 +162,13 @@ class Parser:
             script_sig = script_sig[2 + length*2:]
 
         signature = sigs[i]
-        if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
+        if len(signature) not in self.ECDSA_SIG_LENGTHS:
             signature = "NaN"
         return signature
 
     def extract_signature_p2wsh(self, vin, i):
         signature = vin['txinwitness'][i + 1] # Skipping the empty item
-        if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
+        if len(signature) not in self.ECDSA_SIG_LENGTHS:
             #print("[P2WSH] Failed signature:", signature)
             signature = "NaN"
         return signature
@@ -176,7 +176,7 @@ class Parser:
     def extract_signature_p2tr(self, vin, i):
         signature = vin['txinwitness'][i]
 
-        if not len(signature) in Parser.SCHNORR_SIG_LENGTHS:
+        if not len(signature) in self.SCHNORR_SIG_LENGTHS:
             signature = "NaN"
 
         if len(signature) == 130:
@@ -192,22 +192,22 @@ class Parser:
             suspected_key = script[:-2]
 
         if transaction_type == "P2SH":
-            signature = Parser.extract_signature_p2sh(self, vin, 0)
+            signature = self.extract_signature_p2sh(vin, 0)
         if transaction_type == "P2WSH":
-            signature = Parser.extract_signature_p2wsh(self, vin, 0)
+            signature = self.extract_signature_p2wsh(vin, 0)
         if transaction_type == "P2TR":
-            signature = Parser.extract_signature_p2tr(self, vin, 0)
+            signature = self.extract_signature_p2tr(vin, 0)
 
 
         if transaction_type in ("P2SH", "P2WSH"):
-            if not Parser.correct_ecdsa_key(self, suspected_key):
+            if not self.correct_ecdsa_key(suspected_key):
                 return False
-            Parser.add_key_to_data_dict(self, transaction, suspected_key, signature, Parser.ecdsa_data)
+            self.add_key_to_data_dict(transaction, suspected_key, signature, self.ecdsa_data)
 
         if transaction_type == "P2TR":
-            if not Parser.correct_schnorr_key(self, suspected_key):
+            if not self.correct_schnorr_key(suspected_key):
                 return False
-            Parser.add_key_to_data_dict(self, transaction, suspected_key, signature, Parser.schnorr_data)
+            self.add_key_to_data_dict(transaction, suspected_key, signature, self.schnorr_data)
         
         return True
 
@@ -226,11 +226,11 @@ class Parser:
         for j in range(num_sigs):
 
                 if transaction_type == "P2SH":
-                    signature = Parser.extract_signature_p2sh(self, vin, j)
+                    signature = self.extract_signature_p2sh(vin, j)
                 if transaction_type == "P2WSH":
-                    signature = Parser.extract_signature_p2wsh(self, vin, j)
+                    signature = self.extract_signature_p2wsh(vin, j)
                 if transaction_type == "P2TR":
-                    signature = Parser.extract_signature_p2tr(self, vin, j)
+                    signature = self.extract_signature_p2tr(vin, j)
                 sigs.append(signature)
 
         for i in range(num_keys):
@@ -240,21 +240,21 @@ class Parser:
 
             # Choose dictionary to save data to
             if num_sigs == num_keys:
-                data_dict = Parser.ecdsa_data
+                data_dict = self.ecdsa_data
                 if transaction_type == "P2TR":
-                    data_dict = Parser.schnorr_data
+                    data_dict = self.schnorr_data
             else:
-                data_dict = Parser.unmatched_ecdsa_data
+                data_dict = self.unmatched_ecdsa_data
                 if transaction_type == "P2TR":
-                    data_dict = Parser.unmatched_schnorr_data
+                    data_dict = self.unmatched_schnorr_data
 
 
-            if (transaction_type in ("P2SH, P2WSH") and Parser.correct_ecdsa_key(self, suspected_key))\
-            or (transaction_type == "P2TR" and Parser.correct_schnorr_key(self, suspected_key)):
+            if (transaction_type in ("P2SH, P2WSH") and self.correct_ecdsa_key(suspected_key))\
+            or (transaction_type == "P2TR" and self.correct_schnorr_key(suspected_key)):
                 if num_sigs == num_keys:
-                    Parser.add_key_to_data_dict(self, transaction, suspected_key, sigs[i], data_dict)
+                    self.add_key_to_data_dict(transaction, suspected_key, sigs[i], data_dict)
                 else:
-                    Parser.add_key_to_unmatched_data_dict(self, transaction, suspected_key, sigs, data_dict)
+                    self.add_key_to_unmatched_data_dict(transaction, suspected_key, sigs, data_dict)
                 toreturn = True
 
         return toreturn
@@ -269,10 +269,10 @@ class Parser:
             return False
 
         if script[-1] == 'c' and script[-2] == 'a': # Checksig instruction in hex is "ac"
-            return Parser.handle_checksig(self, transaction, vin, script, transaction_type)
+            return self.handle_checksig(transaction, vin, script, transaction_type)
 
         if script[-1] == 'e' and script[-2] == 'a': # Checkmultisig instruction in hex is "ae"
-            return Parser.handle_checkmultisig(self, transaction, vin, script, transaction_type)
+            return self.handle_checkmultisig(transaction, vin, script, transaction_type)
 
         return False
 
@@ -287,12 +287,12 @@ class Parser:
             return False
 
         script = vin['scriptSig']['asm'].split(" ")[-1]
-        return Parser.parse_serialized_script(self, transaction, vin, script, "P2SH")
+        return self.parse_serialized_script(transaction, vin, script, "P2SH")
 
 
     def extract_signature_p2wpkh(self, vin):
         signature = vin['txinwitness'][0]
-        if len(signature) not in Parser.ECDSA_SIG_LENGTHS:
+        if len(signature) not in self.ECDSA_SIG_LENGTHS:
             signature = "NaN"
         return signature
 
@@ -306,12 +306,12 @@ class Parser:
             return False
 
         suspected_key = vin['txinwitness'][1]
-        signature = Parser.extract_signature_p2wpkh(self, vin)
+        signature = self.extract_signature_p2wpkh(vin)
 
-        if not Parser.correct_ecdsa_key(self, suspected_key):
+        if not self.correct_ecdsa_key(suspected_key):
             return False
 
-        Parser.add_key_to_data_dict(self, transaction, suspected_key, signature, Parser.ecdsa_data)
+        self.add_key_to_data_dict(transaction, suspected_key, signature, self.ecdsa_data)
         return True
 
 
@@ -324,12 +324,12 @@ class Parser:
             return False
 
         script = vin['txinwitness'][-1]
-        return Parser.parse_serialized_script(self, transaction, vin, script, "P2WSH")
+        return self.parse_serialized_script(transaction, vin, script, "P2WSH")
  
 
     def handle_p2tr_keypath(self, transaction, vin):
-        signature = Parser.extract_signature_p2tr(self, vin, 0)
-        vout = Parser.get_previous_vout(self, vin)
+        signature = self.extract_signature_p2tr(vin, 0)
+        vout = self.get_previous_vout(vin)
 
         if "scriptPubKey" not in vout.keys():
             return False                                                    # This two if's are not necessary,
@@ -341,10 +341,10 @@ class Parser:
                                                                     # The first one, I guess, is a version byte.
                                                                     # And the second one is a public key.
 
-        if not Parser.correct_schnorr_key(self, suspected_key):
+        if not self.correct_schnorr_key(suspected_key):
             return False
 
-        Parser.add_key_to_data_dict(self, transaction, suspected_key, signature, Parser.schnorr_data)
+        self.add_key_to_data_dict(transaction, suspected_key, signature, self.schnorr_data)
         return True
 
 
@@ -360,12 +360,12 @@ class Parser:
         control_block = control_block[2:] # We don't need a leaf version and a sign bit, which are stored in the first byte.
         suspected_key = control_block[:64]
 
-        if Parser.correct_schnorr_key(self, suspected_key):
-            Parser.add_key_to_data_dict(self, transaction, suspected_key, "NaN", Parser.schnorr_data)
+        if self.correct_schnorr_key(suspected_key):
+            self.add_key_to_data_dict(transaction, suspected_key, "NaN", self.schnorr_data)
             toreturn = True
 
         script = vin["txinwitness"][-2]
-        if Parser.parse_serialized_script(self, transaction, vin, script, "P2TR"):
+        if self.parse_serialized_script(transaction, vin, script, "P2TR"):
             print("Successful P2TR [SCRIPT]!!! TXID:", transaction["txid"])
             toreturn = True
 
@@ -381,10 +381,10 @@ class Parser:
             return False
 
         suspected_key = scriptpubkey[1]
-        if not Parser.correct_schnorr_key(self, suspected_key):
+        if not self.correct_schnorr_key(suspected_key):
             return False
 
-        Parser.add_key_to_data_dict(self, transaction, suspected_key, "NaN", Parser.schnorr_data)
+        self.add_key_to_data_dict(transaction, suspected_key, "NaN", self.schnorr_data)
         return True
 
 
@@ -395,10 +395,10 @@ class Parser:
         if not 'txinwitness' in vin.keys() or len(vin['txinwitness']) == 0:
             return False
 
-        if len(vin['txinwitness']) == 1 and len(vin['txinwitness'][0]) in Parser.SCHNORR_SIG_LENGTHS:
-            return Parser.handle_p2tr_keypath(self, transaction, vin)
+        if len(vin['txinwitness']) == 1 and len(vin['txinwitness'][0]) in self.SCHNORR_SIG_LENGTHS:
+            return self.handle_p2tr_keypath(transaction, vin)
 
-        return Parser.handle_p2tr_scriptpath(self, transaction, vin)
+        return self.handle_p2tr_scriptpath(transaction, vin)
 
 
     def data_dict_full(self, data_dict):
@@ -421,32 +421,32 @@ class Parser:
     # This functions goes trough all data dictionaries and checks, whether they need to be flushed.
     # Argument <exception> is a bool value to force flushing: for example, at the very end of the script
     def flush_if_needed(self, n, exception):
-        for dict_tup in Parser.DICTS: 
-            if Parser.data_dict_full(self, dict_tup[0]) or (exception and dict_tup[0] != {}):
+        for dict_tup in self.DICTS: 
+            if self.data_dict_full(dict_tup[0]) or (exception and dict_tup[0] != {}):
                 file_name = "gathered-data/" + dict_tup[1] + "_" + str(n) + ".txt"
-                Parser.flush_data_dict(self, file_name, dict_tup[0])
+                self.flush_data_dict(file_name, dict_tup[0])
 
 
     def process_inputs(self, transaction):
         for i in range(len(transaction["vin"])):
             vin = transaction["vin"][i]
-            Parser.inputs += 1
+            self.inputs += 1
             try:
 
                 # Run all extractors in turn, stop on success.
-                if not (Parser.process_input_p2wpkh(self, transaction, vin) or \
-                        Parser.process_input_p2wsh(self, transaction, vin) or \
-                        Parser.process_input_p2tr(self, transaction, vin) or \
-                        Parser.process_input_p2sh(self, transaction, vin) or \
-                        Parser.process_input_p2pkh(self, transaction, vin) or \
-                        Parser.process_input_p2pk(self, transaction, vin) or \
+                if not (self.process_input_p2wpkh(transaction, vin) or \
+                        self.process_input_p2wsh(transaction, vin) or \
+                        self.process_input_p2tr(transaction, vin) or \
+                        self.process_input_p2sh(transaction, vin) or \
+                        self.process_input_p2pkh(transaction, vin) or \
+                        self.process_input_p2pk(transaction, vin) or \
                         ('coinbase' in transaction['vin'][0].keys())): # Coinbase input, so don't count as failed.
 
-                    Parser.failed_inputs += 1
+                    self.failed_inputs += 1
                     print("Failed transaction input: ", transaction["txid"], ":", i, sep = '')
 
             except (ValueError, IndexError) as e:
-                Parser.failed_inputs += 1
+                self.failed_inputs += 1
                 print("Failed transaction input: ", transaction["txid"], ":", i, sep = '')
 
 
@@ -454,25 +454,25 @@ class Parser:
     def process_outputs(self, transaction):
         for i in range(len(transaction["vout"])):
             vout = transaction["vout"][i]
-            Parser.outputs += 1
+            self.outputs += 1
 
-            if (vout["scriptPubKey"]["type"] == "pubkey" and not Parser.process_output_p2pk(self, transaction, vout)) or \
-               (vout["scriptPubKey"]["type"] == "witness_v1_taproot" and not Parser.process_output_p2tr(self, transaction, vout)):
-                Parser.failed_outputs += 1
+            if (vout["scriptPubKey"]["type"] == "pubkey" and not self.process_output_p2pk(transaction, vout)) or \
+               (vout["scriptPubKey"]["type"] == "witness_v1_taproot" and not self.process_output_p2tr(transaction, vout)):
+                self.failed_outputs += 1
                 print("Failed transaction output: ", transaction["txid"], ":", i, sep = '')
 
     def process_block(self, n):
-        Parser.blocks += 1
-        block_hash = Parser.rpc.getblockhash(n)
-        block_transactions = Parser.rpc.getblock(block_hash)['tx']
+        self.blocks += 1
+        block_hash = self.rpc.getblockhash(n)
+        block_transactions = self.rpc.getblock(block_hash)['tx']
 
         for transaction_hash in block_transactions:
 
-            Parser.transactions += 1
-            transaction = Parser.rpc.getrawtransaction(transaction_hash, True) # Getting transaction in verbose format
+            self.transactions += 1
+            transaction = self.rpc.getrawtransaction(transaction_hash, True) # Getting transaction in verbose format
 
-            Parser.process_inputs(self, transaction)
-            Parser.process_outputs(self, transaction)
+            self.process_inputs(transaction)
+            self.process_outputs(transaction)
 
 
     # Main functions, takes natural numbers start, end which are the indexes of Bitcoin blocks
@@ -480,10 +480,10 @@ class Parser:
     def process_blocks(self, start, end):
 
         for n in range(start, end):
-            Parser.process_block(self, n)
-            Parser.flush_if_needed(self, n, False)
+            self.process_block(n)
+            self.flush_if_needed(n, False)
 
-        Parser.flush_if_needed(self, n, True)
+        self.flush_if_needed(n, True)
 
 
 #Example of use:
