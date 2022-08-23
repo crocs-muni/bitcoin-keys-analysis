@@ -103,3 +103,27 @@ def test_process_input_p2pk(txid: str, vin_n: int, expected_result: bool, expect
     vin = transaction["vin"][vin_n]
     assert parser.process_input_p2pk(transaction, vin) == expected_result
     assert parser.ecdsa_data == expected_dict
+
+
+@pytest.mark.parametrize("txid, vout_n, expected_result, expected_dict", [
+    ("1e3c85f59802e3907a254766fd466e308888bf3fcaa0723a9599b8ff41028503", 0, True,
+        {
+            "04c7a78b9a39471563ee652a5d9e71f788c2c2923c04341059d8a803f773b60071bf2919cc5f6de23932fddce3da8c6e80f92a38fd63c54ded9860c61f0817f971":
+            [
+                {
+                    "ID": "1e3c85f59802e3907a254766fd466e308888bf3fcaa0723a9599b8ff41028503",
+                    "time": 1239529193,
+                    "signature": "NaN"
+                }
+
+            ]
+        }
+    ),
+    ("e700b7b330e4b56c5883d760f9cbe4fa47e0f62b350e108f1767bc07a4bbc07b", 0, False, {})
+                                                         ])
+def test_process_output_p2pk(txid: str, vout_n: int, expected_result: bool, expected_dict: dict):
+    parser.ecdsa_data = {}
+    transaction = parser.rpc.getrawtransaction(txid, True)
+    vout = transaction["vout"][vout_n]
+    assert parser.process_output_p2pk(transaction, vout) == expected_result
+    assert parser.ecdsa_data == expected_dict

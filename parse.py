@@ -139,9 +139,9 @@ class Parser:
             return False
 
         suspected_key = vout['scriptPubKey']['asm'].split(" OP_CHECKSIG")[0]
-        signature = self.extract_signature_p2pk(transaction)
+        signature = "NaN"
 
-        if not Parse.correct_ecdsa_key(suspected_key):
+        if not self.correct_ecdsa_key(suspected_key):
             return False
 
         self.add_key_to_data_dict(transaction, suspected_key, signature, self.ecdsa_data)
