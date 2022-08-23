@@ -167,9 +167,11 @@ class Parser:
         return signature
 
     def extract_signature_p2wsh(self, vin, i):
-        signature = vin['txinwitness'][i + 1] # Skipping the empty item
+        if not "txinwitness" in vin.keys() or len(vin["txinwitness"]) < 2:
+            return "NaN"
+
+        signature = vin["txinwitness"][i + 1] # Skipping the empty item
         if len(signature) not in self.ECDSA_SIG_LENGTHS:
-            #print("[P2WSH] Failed signature:", signature)
             signature = "NaN"
         return signature
 
