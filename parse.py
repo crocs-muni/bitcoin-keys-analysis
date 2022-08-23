@@ -149,19 +149,19 @@ class Parser:
 
 
     # In case of checksig pass i = 0, same for p2wsh and p2tr
-    def extract_signature_p2sh(self, vin, i):
+    def extract_signature_p2sh(self, vin, i): # Also works for P2PK and P2PKH, so extract_signature_p2pk_p2pkh() is kind of useless..
         script_sig = vin["scriptSig"]["hex"]
         if script_sig[:2] == "00":
             script_sig = script_sig[2:]
 
-        sigs = []
-        while script_sig[:2] != "04" and script_sig != "":   # 0x04 is hex of OP_PUSHDATA1 after which redeem script goes
+        signature = "NaN"
+        for a in range(i + 1):
+            if script_sig == "" or script_sig[:2] == "04":  # 0x04 is hex of OP_PUSHDATA1 after which redeem script goes
+                break
             length = int(script_sig[:2], 16)
             signature = script_sig[2: 2 + length*2]
-            sigs.append(signature)
             script_sig = script_sig[2 + length*2:]
 
-        signature = sigs[i]
         if len(signature) not in self.ECDSA_SIG_LENGTHS:
             signature = "NaN"
         return signature

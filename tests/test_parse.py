@@ -127,3 +127,12 @@ def test_process_output_p2pk(txid: str, vout_n: int, expected_result: bool, expe
     vout = transaction["vout"][vout_n]
     assert parser.process_output_p2pk(transaction, vout) == expected_result
     assert parser.ecdsa_data == expected_dict
+
+@pytest.mark.parametrize("txid, vin_n, i, expected_signature", [
+    ("00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8", 0, 0, "3045022100e40fbdec298b1fd267e43561e5d43822f0156c47772df2c1e955efe0f1f0a307022018946e8b11b7e1fb02f5c8ac6832991655dc44229a018aa19b9fc9a3daa66bf601"), # P2SH
+    ("00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8", 0, 1, "304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e501"),
+    ("00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8", 1, 2, "NaN")
+                                                            ])
+def test_extract_signature_p2sh(txid: str, vin_n: int, i: int, expected_signature: str):
+    vin = parser.rpc.getrawtransaction(txid, True)["vin"][vin_n]
+    assert parser.extract_signature_p2sh(vin, i) == expected_signature
