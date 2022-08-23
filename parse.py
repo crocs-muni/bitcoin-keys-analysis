@@ -116,7 +116,7 @@ class Parser:
         return vout
 
     def process_input_p2pk(self, transaction, vin):
-        if not 'scriptSig' in vin.keys():
+        if not 'scriptSig' in vin.keys() or len(vin["scriptSig"]["asm"]) < 2: # 2nd statement is to not pass empty strings
             return False
 
         signature = self.extract_signature_p2pk_p2pkh(vin)

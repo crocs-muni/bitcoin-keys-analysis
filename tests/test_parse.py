@@ -71,11 +71,35 @@ def test_extract_signature_p2pk_p2pkh(txid: str, vin_n: int, expected_signature:
             ]
         }
     ),
-    ("1e3c85f59802e3907a254766fd466e308888bf3fcaa0723a9599b8ff41028503", 0, False, {})
+    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, False, {})
                                                          ])
 def test_process_input_p2pkh(txid: str, vin_n: int, expected_result: bool, expected_dict: dict):
     parser.ecdsa_data = {}
     transaction = parser.rpc.getrawtransaction(txid, True)
     vin = transaction["vin"][vin_n]
     assert parser.process_input_p2pkh(transaction, vin) == expected_result
+    assert parser.ecdsa_data == expected_dict
+
+
+@pytest.mark.parametrize("txid, vin_n, expected_result, expected_dict", [
+    ("ad511d71762f4123df227e2e048672c4df8cc2ac056ee37f52ff33085b2a2c47", 0, True,
+        {
+            "04c7a78b9a39471563ee652a5d9e71f788c2c2923c04341059d8a803f773b60071bf2919cc5f6de23932fddce3da8c6e80f92a38fd63c54ded9860c61f0817f971":
+            [
+                {
+                    "ID": "ad511d71762f4123df227e2e048672c4df8cc2ac056ee37f52ff33085b2a2c47",
+                    "time": 1239621855,
+                    "signature": "304502200f55222e27f6b6aff33e314339e569b54e80df76f628daa2c76ef56558bc650c022100c989ec3a0fad6b1aff1087378c219091de70bac9d7bf3ebfa7718a6c4fa7aeb701"
+                }
+
+            ]
+        }
+    ),
+    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, False, {})
+                                                         ])
+def test_process_input_p2pk(txid: str, vin_n: int, expected_result: bool, expected_dict: dict):
+    parser.ecdsa_data = {}
+    transaction = parser.rpc.getrawtransaction(txid, True)
+    vin = transaction["vin"][vin_n]
+    assert parser.process_input_p2pk(transaction, vin) == expected_result
     assert parser.ecdsa_data == expected_dict
