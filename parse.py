@@ -176,6 +176,9 @@ class Parser:
         return signature
 
     def extract_signature_p2tr(self, vin, i):
+        if not "txinwitness" in vin.keys() or len(vin["txinwitness"]) <= i:
+            return "NaN"
+
         signature = vin['txinwitness'][i]
 
         if not len(signature) in self.SCHNORR_SIG_LENGTHS:

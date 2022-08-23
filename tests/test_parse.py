@@ -147,3 +147,14 @@ def test_extract_signature_p2sh(txid: str, vin_n: int, i: int, expected_signatur
 def test_extract_signature_p2wsh(txid: str, vin_n: int, i: int, expected_signature: str):
     vin = parser.rpc.getrawtransaction(txid, True)["vin"][vin_n]
     assert parser.extract_signature_p2wsh(vin, i) == expected_signature
+
+
+@pytest.mark.parametrize("txid, vin_n, i, expected_signature", [
+    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 0, 0, "NaN"), # P2SH
+    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, 1, "NaN"), # P2WSH
+    ("37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8", 0, 0, "134896c42cd95680b048845847c8054756861ffab7d4abab72f6508d67d1ec0c590287ec2161dd7884983286e1cd56ce65c08a24ee0476ede92678a93b1b180c") # P2TR KeyPath
+    # TODO P2TR ScriptPath
+                                                            ])
+def test_extract_signature_p2tr(txid: str, vin_n: int, i: int, expected_signature: str):
+    vin = parser.rpc.getrawtransaction(txid, True)["vin"][vin_n]
+    assert parser.extract_signature_p2tr(vin, i) == expected_signature
