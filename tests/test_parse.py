@@ -312,3 +312,27 @@ def test_process_input_p2tr(txid: str, vin_n: int, expected_result: bool, expect
     vin = transaction["vin"][vin_n]
     assert parser.process_input_p2tr(transaction, vin) == expected_result
     assert parser.schnorr_data == expected_dict
+
+
+@pytest.mark.parametrize("txid, vout_n, expected_result, expected_dict", [
+    ("e700b7b330e4b56c5883d760f9cbe4fa47e0f62b350e108f1767bc07a4bbc07b", 0, True,
+        {
+            "5f4237bd7dae576b34abc8a9c6fa4f0e4787c04234ca963e9e96c8f9b67b56d1":
+            [
+                {
+                    "ID": "e700b7b330e4b56c5883d760f9cbe4fa47e0f62b350e108f1767bc07a4bbc07b",
+                    "time": 1636866927,
+                    "signature": "NaN"
+                }
+
+            ]
+        }
+    ),
+    ("ad511d71762f4123df227e2e048672c4df8cc2ac056ee37f52ff33085b2a2c47", 0, False, {})
+                                                         ])
+def test_process_output_p2tr(txid: str, vout_n: int, expected_result: bool, expected_dict: dict):
+    parser.schnorr_data = {}
+    transaction = parser.rpc.getrawtransaction(txid, True)
+    vout = transaction["vout"][vout_n]
+    assert parser.process_output_p2tr(transaction, vout) == expected_result
+    assert parser.schnorr_data == expected_dict
