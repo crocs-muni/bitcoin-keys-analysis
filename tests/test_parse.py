@@ -241,3 +241,51 @@ def test_process_input_p2wpkh(txid: str, vin_n: int, expected_result: bool, expe
     vin = transaction["vin"][vin_n]
     assert parser.process_input_p2wpkh(transaction, vin) == expected_result
     assert parser.ecdsa_data == expected_dict
+
+
+@pytest.mark.parametrize("txid, vin_n, expected_result, expected_dict", [
+    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, True,
+        {
+            "03e1fc3528a3ee616ed38cfc525cb4c9b94517f165334f8269c8e31068bdf0468a":
+            [
+                {
+                    "ID": "c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a",
+                    "time": 1631539035,
+                    "signatures": [
+                        "3045022100bed582633b971c9786720c325472b0808727b72280de798a995939f91c13cb3c0220216fb5dfdfb2914e71f54f1a1c2f54f65fb22e083d1c843b8d9487120f238d0a01",
+                        "3045022100a28f052fbdb37dba174652ff30ce128f68f8fbfbe8a7d286d417cd7f79c79ad70220373412b7f0c9a1f85e693addb57c11a5598ef2b380764910fc843702471db35e01"
+                                  ]
+                }
+            ],
+            "0202708bae7a5f3b25fbef5406627166fff4ab6b2d4e779dcdb477f56fc64dce01":
+            [
+                {
+                    "ID": "c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a",
+                    "time": 1631539035,
+                    "signatures": [
+                        "3045022100bed582633b971c9786720c325472b0808727b72280de798a995939f91c13cb3c0220216fb5dfdfb2914e71f54f1a1c2f54f65fb22e083d1c843b8d9487120f238d0a01",
+                        "3045022100a28f052fbdb37dba174652ff30ce128f68f8fbfbe8a7d286d417cd7f79c79ad70220373412b7f0c9a1f85e693addb57c11a5598ef2b380764910fc843702471db35e01"
+                                  ]
+                }
+            ],
+            "030f0e8ebbfc107ebc29cb200b9d52a99868363ea9e334bed523cd85fc22b2adf3":
+            [
+                {
+                    "ID": "c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a",
+                    "time": 1631539035,
+                    "signatures": [
+                        "3045022100bed582633b971c9786720c325472b0808727b72280de798a995939f91c13cb3c0220216fb5dfdfb2914e71f54f1a1c2f54f65fb22e083d1c843b8d9487120f238d0a01",
+                        "3045022100a28f052fbdb37dba174652ff30ce128f68f8fbfbe8a7d286d417cd7f79c79ad70220373412b7f0c9a1f85e693addb57c11a5598ef2b380764910fc843702471db35e01"
+                                  ]
+                }
+            ]
+        }
+    ),
+    ("37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8", 1, False, {})
+                                                         ])
+def test_process_input_p2wsh(txid: str, vin_n: int, expected_result: bool, expected_dict: dict):
+    parser.unmatched_ecdsa_data = {}
+    transaction = parser.rpc.getrawtransaction(txid, True)
+    vin = transaction["vin"][vin_n]
+    assert parser.process_input_p2wsh(transaction, vin) == expected_result
+    assert parser.unmatched_ecdsa_data == expected_dict
