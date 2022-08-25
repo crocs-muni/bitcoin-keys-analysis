@@ -218,3 +218,26 @@ def test_process_input_p2sh(txid: str, vin_n: int, expected_result: bool, expect
     vin = transaction["vin"][vin_n]
     assert parser.process_input_p2sh(transaction, vin) == expected_result
     assert parser.unmatched_ecdsa_data == expected_dict
+
+
+@pytest.mark.parametrize("txid, vin_n, expected_result, expected_dict", [
+    ("9989bb6dd74ceeb6751502b728b948c6967d61a75f66c6d28de77b4d7d8b4cde", 0, True,
+        {
+            "03893037c89087a95351d74cb8419beca4680c02bdbb83808988d80368886ec043":
+            [
+                {
+                    "ID": "9989bb6dd74ceeb6751502b728b948c6967d61a75f66c6d28de77b4d7d8b4cde",
+                    "time": 1631332460,
+                    "signature": "304402204f908d4c0aa09ad447cb224ff274e76d3b4dfa5ebf224cc38a84f91a13ac11c4022020c559bea114643b0d54086e0faa3bdf76ba14a2bc28a8ee8697ee0c6106fdbc01"
+                }
+            ]
+        }
+    ),
+    ("00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8", 0, False, {})
+                                                         ])
+def test_process_input_p2wpkh(txid: str, vin_n: int, expected_result: bool, expected_dict: dict):
+    parser.ecdsa_data = {}
+    transaction = parser.rpc.getrawtransaction(txid, True)
+    vin = transaction["vin"][vin_n]
+    assert parser.process_input_p2wpkh(transaction, vin) == expected_result
+    assert parser.ecdsa_data == expected_dict
