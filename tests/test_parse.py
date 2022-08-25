@@ -57,6 +57,38 @@ def test_extract_signature_p2pk_p2pkh(txid: str, vin_n: int, expected_signature:
     assert parser.extract_signature_p2pk_p2pkh(vin) == expected_signature
 
 
+@pytest.mark.parametrize("txid, vin_n, i, expected_signature", [
+    ("00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8", 0, 0, "3045022100e40fbdec298b1fd267e43561e5d43822f0156c47772df2c1e955efe0f1f0a307022018946e8b11b7e1fb02f5c8ac6832991655dc44229a018aa19b9fc9a3daa66bf601"), # P2SH
+    ("00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8", 0, 1, "304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e501"),
+    ("00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8", 1, 2, "NaN")
+                                                            ])
+def test_extract_signature_p2sh(txid: str, vin_n: int, i: int, expected_signature: str):
+    vin = parser.rpc.getrawtransaction(txid, True)["vin"][vin_n]
+    assert parser.extract_signature_p2sh(vin, i) == expected_signature
+
+
+@pytest.mark.parametrize("txid, vin_n, i, expected_signature", [
+    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 0, 0, "NaN"), # P2SH
+    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, 0, "3045022100bed582633b971c9786720c325472b0808727b72280de798a995939f91c13cb3c0220216fb5dfdfb2914e71f54f1a1c2f54f65fb22e083d1c843b8d9487120f238d0a01"), # P2WSH
+    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, 1, "3045022100a28f052fbdb37dba174652ff30ce128f68f8fbfbe8a7d286d417cd7f79c79ad70220373412b7f0c9a1f85e693addb57c11a5598ef2b380764910fc843702471db35e01"),
+    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, 2, "NaN")
+                                                            ])
+def test_extract_signature_p2wsh(txid: str, vin_n: int, i: int, expected_signature: str):
+    vin = parser.rpc.getrawtransaction(txid, True)["vin"][vin_n]
+    assert parser.extract_signature_p2wsh(vin, i) == expected_signature
+
+
+@pytest.mark.parametrize("txid, vin_n, i, expected_signature", [
+    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 0, 0, "NaN"), # P2SH
+    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, 1, "NaN"), # P2WSH
+    ("37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8", 0, 0, "134896c42cd95680b048845847c8054756861ffab7d4abab72f6508d67d1ec0c590287ec2161dd7884983286e1cd56ce65c08a24ee0476ede92678a93b1b180c") # P2TR KeyPath
+    # TODO P2TR ScriptPath
+                                                            ])
+def test_extract_signature_p2tr(txid: str, vin_n: int, i: int, expected_signature: str):
+    vin = parser.rpc.getrawtransaction(txid, True)["vin"][vin_n]
+    assert parser.extract_signature_p2tr(vin, i) == expected_signature
+
+
 @pytest.mark.parametrize("txid, vin_n, expected_result, expected_dict", [
     ("ce6fb9e782df2f5dbd4190069c3ec31ccf1ea2429b890da3c2b12ef37037a5be", 0, True,
         {
@@ -128,33 +160,50 @@ def test_process_output_p2pk(txid: str, vout_n: int, expected_result: bool, expe
     assert parser.process_output_p2pk(transaction, vout) == expected_result
     assert parser.ecdsa_data == expected_dict
 
-@pytest.mark.parametrize("txid, vin_n, i, expected_signature", [
-    ("00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8", 0, 0, "3045022100e40fbdec298b1fd267e43561e5d43822f0156c47772df2c1e955efe0f1f0a307022018946e8b11b7e1fb02f5c8ac6832991655dc44229a018aa19b9fc9a3daa66bf601"), # P2SH
-    ("00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8", 0, 1, "304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e501"),
-    ("00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8", 1, 2, "NaN")
-                                                            ])
-def test_extract_signature_p2sh(txid: str, vin_n: int, i: int, expected_signature: str):
-    vin = parser.rpc.getrawtransaction(txid, True)["vin"][vin_n]
-    assert parser.extract_signature_p2sh(vin, i) == expected_signature
 
-
-@pytest.mark.parametrize("txid, vin_n, i, expected_signature", [
-    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 0, 0, "NaN"), # P2SH
-    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, 0, "3045022100bed582633b971c9786720c325472b0808727b72280de798a995939f91c13cb3c0220216fb5dfdfb2914e71f54f1a1c2f54f65fb22e083d1c843b8d9487120f238d0a01"), # P2WSH
-    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, 1, "3045022100a28f052fbdb37dba174652ff30ce128f68f8fbfbe8a7d286d417cd7f79c79ad70220373412b7f0c9a1f85e693addb57c11a5598ef2b380764910fc843702471db35e01"),
-    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, 2, "NaN")
-                                                            ])
-def test_extract_signature_p2wsh(txid: str, vin_n: int, i: int, expected_signature: str):
-    vin = parser.rpc.getrawtransaction(txid, True)["vin"][vin_n]
-    assert parser.extract_signature_p2wsh(vin, i) == expected_signature
-
-
-@pytest.mark.parametrize("txid, vin_n, i, expected_signature", [
-    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 0, 0, "NaN"), # P2SH
-    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, 1, "NaN"), # P2WSH
-    ("37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8", 0, 0, "134896c42cd95680b048845847c8054756861ffab7d4abab72f6508d67d1ec0c590287ec2161dd7884983286e1cd56ce65c08a24ee0476ede92678a93b1b180c") # P2TR KeyPath
-    # TODO P2TR ScriptPath
-                                                            ])
-def test_extract_signature_p2tr(txid: str, vin_n: int, i: int, expected_signature: str):
-    vin = parser.rpc.getrawtransaction(txid, True)["vin"][vin_n]
-    assert parser.extract_signature_p2tr(vin, i) == expected_signature
+@pytest.mark.parametrize("txid, vin_n, expected_result, expected_dict", [
+    ("00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8", 0, True,
+        {
+            "036c3735b2bf370501c3b872498de54b39ab5afa83d8ce7f6aec43f63a812265b4":
+            [
+                {
+                    "ID": "00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8",
+                    "time": 1459929415,
+                    "signatures": [
+                        "3045022100e40fbdec298b1fd267e43561e5d43822f0156c47772df2c1e955efe0f1f0a307022018946e8b11b7e1fb02f5c8ac6832991655dc44229a018aa19b9fc9a3daa66bf601",
+                        "304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e501"
+                                  ]
+                }
+            ],
+            "032b03a42faf387dd5c604435cd48d26b8827fa28a5d4d0f9a18b5cefe443bb410":
+            [
+                {
+                    "ID": "00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8",
+                    "time": 1459929415,
+                    "signatures": [
+                        "3045022100e40fbdec298b1fd267e43561e5d43822f0156c47772df2c1e955efe0f1f0a307022018946e8b11b7e1fb02f5c8ac6832991655dc44229a018aa19b9fc9a3daa66bf601",
+                        "304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e501"
+                                  ]
+                }
+            ],
+            "02ebbd4ecea67dd980fc4854cc13b1f10cefafdafe8b1eb8e5ce73939b59a0477c":
+            [
+                {
+                    "ID": "00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8",
+                    "time": 1459929415,
+                    "signatures": [
+                        "3045022100e40fbdec298b1fd267e43561e5d43822f0156c47772df2c1e955efe0f1f0a307022018946e8b11b7e1fb02f5c8ac6832991655dc44229a018aa19b9fc9a3daa66bf601",
+                        "304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e501"
+                                  ]
+                }
+            ]
+        }
+    ),
+    ("ce6fb9e782df2f5dbd4190069c3ec31ccf1ea2429b890da3c2b12ef37037a5be", 0, False, {})
+                                                         ])
+def test_process_input_p2sh(txid: str, vin_n: int, expected_result: bool, expected_dict: dict):
+    parser.unmatched_ecdsa_data = {}
+    transaction = parser.rpc.getrawtransaction(txid, True)
+    vin = transaction["vin"][vin_n]
+    assert parser.process_input_p2sh(transaction, vin) == expected_result
+    assert parser.unmatched_ecdsa_data == expected_dict
