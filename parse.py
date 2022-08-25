@@ -296,6 +296,9 @@ class Parser:
 
 
     def extract_signature_p2wpkh(self, vin):
+        if not "txinwitness" in vin.keys() or len(vin["txinwitness"]) < 2:
+            return "NaN"
+
         signature = vin['txinwitness'][0]
         if len(signature) not in self.ECDSA_SIG_LENGTHS:
             signature = "NaN"

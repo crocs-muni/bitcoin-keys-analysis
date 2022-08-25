@@ -67,6 +67,17 @@ def test_extract_signature_p2sh(txid: str, vin_n: int, i: int, expected_signatur
     assert parser.extract_signature_p2sh(vin, i) == expected_signature
 
 
+@pytest.mark.parametrize("txid, vin_n, expected_signature", [
+    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 0, "NaN"), # P2SH
+    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, "NaN"), # P2WSH
+    ("9989bb6dd74ceeb6751502b728b948c6967d61a75f66c6d28de77b4d7d8b4cde", 0, "304402204f908d4c0aa09ad447cb224ff274e76d3b4dfa5ebf224cc38a84f91a13ac11c4022020c559bea114643b0d54086e0faa3bdf76ba14a2bc28a8ee8697ee0c6106fdbc01"), # P2WPKH
+    ("ef21739d35f3d032edbbc6bb479ab67379f3b038a636472e313ca6ecda4b5b33", 7, "304502210097dfdc2d5db6bb15686f5858a6113e26354d51b1c5272a008a8398b6b9bea09d022052f9f9bf47ea4b17c7a2de6641aec15223d773301831448f5227c112383bc91f01")
+                                                            ])
+def test_extract_signature_p2wpkh(txid: str, vin_n: int, expected_signature: str):
+    vin = parser.rpc.getrawtransaction(txid, True)["vin"][vin_n]
+    assert parser.extract_signature_p2wpkh(vin) == expected_signature
+
+
 @pytest.mark.parametrize("txid, vin_n, i, expected_signature", [
     ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 0, 0, "NaN"), # P2SH
     ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, 0, "3045022100bed582633b971c9786720c325472b0808727b72280de798a995939f91c13cb3c0220216fb5dfdfb2914e71f54f1a1c2f54f65fb22e083d1c843b8d9487120f238d0a01"), # P2WSH
