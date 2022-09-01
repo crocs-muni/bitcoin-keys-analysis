@@ -1,9 +1,6 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
-<TODO>: Rewrite p2tr.
-NOTE2: MAST control block. (Look at Bitcoin Core source code, Sparrow wallets).
-------------------------------------------------------------------------------------------------------------------------------
 NOTE: Review/rewrite handle_checksig() and handle_checkmultisig().
 NOTE2: Script can not parse P2SH and P2WSH transactions, where:
     1) OP_CHECKSIG or OP_CHECKMULTISIG are not at the end. Example (txid):
@@ -13,10 +10,10 @@ NOTE2: Script can not parse P2SH and P2WSH transactions, where:
         9499b951301c14983d29b762539b22e3a2c1a59a196671172a27fe0e0a8e3bda
     3) And likely more..
 
-Full rewrite of parsing serialized script is needed in order to solve it.
+<TODO>: Full rewrite of parsing serialized script is needed in order to solve it.
 However, this is only a small percent of transactions, and this is not urgent, so I will try to deal with it later, if it turns out to be reasonable to do..
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: Tailor for mulit-thread meta-center parsing.
+NOTE: Tailor for multi-thread meta-center parsing.
 ------------------------------------------------------------------------------------------------------------------------------
 PLAN: Tailor all the scripts so that analysis could run in real time (non-stop).
 ------------------------------------------------------------------------------------------------------------------------------

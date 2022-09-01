@@ -306,7 +306,38 @@ def test_process_input_p2wsh(txid: str, vin_n: int, expected_result: bool, expec
     ),
     ("ad511d71762f4123df227e2e048672c4df8cc2ac056ee37f52ff33085b2a2c47", 0, False, {})
                                                          ])
-def test_process_input_p2tr(txid: str, vin_n: int, expected_result: bool, expected_dict: dict):
+def test_process_input_p2tr_keypath(txid: str, vin_n: int, expected_result: bool, expected_dict: dict):
+    parser.schnorr_data = {}
+    transaction = parser.rpc.getrawtransaction(txid, True)
+    vin = transaction["vin"][vin_n]
+    assert parser.process_input_p2tr(transaction, vin) == expected_result
+    assert parser.schnorr_data == expected_dict
+
+
+@pytest.mark.parametrize("txid, vin_n, expected_result, expected_dict", [
+    ("37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8", 1, True,
+        {
+            "d9dfdf0fe3c83e9870095d67fff59a8056dad28c6dfb944bb71cf64b90ace9a7":
+            [
+                {
+                    "ID": "37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8",
+                    "time": 1636868413,
+                    "signature": "NaN"
+                }
+            ],
+            "f5b059b9a72298ccbefff59d9b943f7e0fc91d8a3b944a95e7b6390cc99eb5f4":
+            [
+                {
+                    "ID": "37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8",
+                    "time": 1636868413,
+                    "signature": "7b5d614a4610bf9196775791fcc589597ca066dcd10048e004cd4c7341bb4bb90cee4705192f3f7db524e8067a5222c7f09baf29ef6b805b8327ecd1e5ab83ca"
+                }
+            ]
+        }
+    ),
+    ("ad511d71762f4123df227e2e048672c4df8cc2ac056ee37f52ff33085b2a2c47", 0, False, {})
+                                                                        ])
+def test_process_input_p2tr_scriptpath(txid: str, vin_n: int, expected_result: bool, expected_dict: dict):
     parser.schnorr_data = {}
     transaction = parser.rpc.getrawtransaction(txid, True)
     vin = transaction["vin"][vin_n]

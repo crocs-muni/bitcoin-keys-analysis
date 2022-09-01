@@ -194,7 +194,7 @@ class Parser:
         if ' ' in script:
             suspected_key = script.split(' ')[0] # blocks in 2019 get parsed with signature[all] pubkey somescript
         else:
-            suspected_key = script[:-2]
+            suspected_key = script[2:-2] # cutting length and hex-op_code. it's bad, but anyway I'll rewrite it soon.
 
         if transaction_type == "P2SH":
             signature = self.extract_signature_p2sh(vin, 0)
@@ -362,7 +362,7 @@ class Parser:
             return toreturn
 
         control_block = vin['txinwitness'][-1]
-        if (len(control_block) - 2) % 64 != 0: # Explanation on the link below. Too long to paste it here.
+        if (len(control_block) - 2) % 64 != 0: # "control block .. must have length 33 + 32m .. Fail if it does not have such a length." - BIP341
             return toreturn
 
         control_block = control_block[2:] # We don't need a leaf version and a sign bit, which are stored in the first byte.
