@@ -367,3 +367,52 @@ def test_process_output_p2tr(txid: str, vout_n: int, expected_result: bool, expe
     vout = transaction["vout"][vout_n]
     assert parser.process_output_p2tr(transaction, vout) == expected_result
     assert parser.schnorr_data == expected_dict
+
+
+@pytest.mark.parametrize("script, inputs, expected_stack", [
+    ("5221036c3735b2bf370501c3b872498de54b39ab5afa83d8ce7f6aec43f63a812265b421032b03a42faf387dd5c604435cd48d26b8827fa28a5d4d0f9a18b5cefe443bb4102102ebbd4ecea67dd980fc4854cc13b1f10cefafdafe8b1eb8e5ce73939b59a0477c53ae",
+        ["3045022100e40fbdec298b1fd267e43561e5d43822f0156c47772df2c1e955efe0f1f0a307022018946e8b11b7e1fb02f5c8ac6832991655dc44229a018aa19b9fc9a3daa66bf601",
+         "304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e501"],
+        ["3045022100e40fbdec298b1fd267e43561e5d43822f0156c47772df2c1e955efe0f1f0a307022018946e8b11b7e1fb02f5c8ac6832991655dc44229a018aa19b9fc9a3daa66bf601",
+         "304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e501",
+         "OP_2",
+         "036c3735b2bf370501c3b872498de54b39ab5afa83d8ce7f6aec43f63a812265b4",
+         "032b03a42faf387dd5c604435cd48d26b8827fa28a5d4d0f9a18b5cefe443bb410",
+         "02ebbd4ecea67dd980fc4854cc13b1f10cefafdafe8b1eb8e5ce73939b59a0477c",
+         "OP_3",
+         "OP_CHECKMULTISIG"]),
+    ("20f5b059b9a72298ccbefff59d9b943f7e0fc91d8a3b944a95e7b6390cc99eb5f4ac",
+        ["7b5d614a4610bf9196775791fcc589597ca066dcd10048e004cd4c7341bb4bb90cee4705192f3f7db524e8067a5222c7f09baf29ef6b805b8327ecd1e5ab83ca"],
+        ["7b5d614a4610bf9196775791fcc589597ca066dcd10048e004cd4c7341bb4bb90cee4705192f3f7db524e8067a5222c7f09baf29ef6b805b8327ecd1e5ab83ca",
+         "f5b059b9a72298ccbefff59d9b943f7e0fc91d8a3b944a95e7b6390cc99eb5f4",
+         "OP_CHECKSIG"]),
+    ("21039c7a814e68ca713e41e70fb63b1db752be1290501925349d597517e8d21b531aad2103fcf27a3caa82bc0eeba16856c12b42158331f5d11aaef0ec6b0f9a6ef1921d5dac73640380ca00b268",
+        ["304402205fcdf37304778276f380b60429049f9ae32543f1719bfba02dd46541e501b0ac022024afdbf368f0772510f9a8a6689546e5456c91556eab36960ce3f12a914b541401",
+         "30440220598dea760ffe62f0dbed37cb0a270d14aa97ff5e2c5f67a6c2df0daba540a93202203ca9ef1c97ba9f7c449b51abcd573828e3726ae69038c90b658c0f5b0967a92201"],
+        ["304402205fcdf37304778276f380b60429049f9ae32543f1719bfba02dd46541e501b0ac022024afdbf368f0772510f9a8a6689546e5456c91556eab36960ce3f12a914b541401",
+         "30440220598dea760ffe62f0dbed37cb0a270d14aa97ff5e2c5f67a6c2df0daba540a93202203ca9ef1c97ba9f7c449b51abcd573828e3726ae69038c90b658c0f5b0967a92201",
+         "039c7a814e68ca713e41e70fb63b1db752be1290501925349d597517e8d21b531a",
+         "OP_CHECKSIGVERIFY",
+         "03fcf27a3caa82bc0eeba16856c12b42158331f5d11aaef0ec6b0f9a6ef1921d5d",
+         "OP_CHECKSIG",
+         "OP_IFDUP",
+         "OP_NOTIF",
+         "80ca00",
+         "OP_CHECKSEQUENCEVERIFY",
+         "OP_ENDIF"]),
+    ("632103462a938cb554f8d5e717273f59e6c3d20a5c64b1f1228645e24794673437366c67020801b275210311fa1e2edfd0c1d48f7b1a304af8ace5b40b002b218d3c12419747c8bdf0da5568ac",
+        ["3045022100962c406eb33e33201a872156660bfa55507bbda650ec7655b8b8229e7d33c81e02202b83321d4f17d65f8118078d9a2debe0dd3a7026e61319c3a3635aa07dce07a001"],
+        ["3045022100962c406eb33e33201a872156660bfa55507bbda650ec7655b8b8229e7d33c81e02202b83321d4f17d65f8118078d9a2debe0dd3a7026e61319c3a3635aa07dce07a001",
+         "OP_IF",
+         "03462a938cb554f8d5e717273f59e6c3d20a5c64b1f1228645e24794673437366c",
+         "OP_ELSE",
+         "0801",
+         "OP_CHECKSEQUENCEVERIFY",
+         "OP_DROP",
+         "0311fa1e2edfd0c1d48f7b1a304af8ace5b40b002b218d3c12419747c8bdf0da55",
+         "OP_ENDIF",
+         "OP_CHECKSIG"])
+                                                    ])
+def test_load_stack(script: str, inputs: list, expected_stack: list):
+    expected_stack.reverse()
+    assert parser.load_stack(script, inputs) == expected_stack

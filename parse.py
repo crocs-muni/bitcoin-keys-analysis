@@ -20,6 +20,9 @@ class Parser:
     schnorr = 0
     keys = 0
 
+    import op_codes
+    OP_CODES = op_codes.OP_CODES
+
     def print_statistics(self, start_time):
         print("\n", "=" * os.get_terminal_size().columns, sep = '')
         print ("Gathered ", self.keys, " keys: ", self.ecdsa, " ECDSA keys, ", \
@@ -494,9 +497,56 @@ class Parser:
         self.flush_if_needed(n, True)
 
 
+
+    def load_stack_helper(self, script, stack) -> tuple:
+        if len(script) < 2:
+            return None, None
+        command = script[:2]
+        script = script[2:]
+
+        # Non-push codes
+        for hex_op in self.OP_CODES.keys():
+            if command == hex_op:
+                stack.append(self.OP_CODES[hex_op])
+                return script, stack
+
+        # OP_PUSHBYTES
+        length = int(command, 16) * 2 # One byte is two letters in hex-encoded strings.
+        if length < 76: # For values bigger than 76 bytes OP_PUSHDATA codes are used.
+            stack.append(script[:length])
+            script = script[length:]
+            return script, stack
+
+        # OP_PUSHDATA
+        if command == "4c": # OP_PUSHDATA1
+            length = int(script[:2], 16) * 2
+        if command == "4d": # OP_PUSHDATA2
+            length = int(script[:4], 16) * 2
+        if command == "4e": # OP_PUSHDATA4
+            length = int(script[:8], 16) * 2
+
+        if len(script) < length: # Supposed to never happen, but just to be sure.
+            return None, None
+
+        stack.append(script[:length])
+        script = script[length:]
+        return script, stack
+
+    def load_stack(self, script, inputs):
+        stack = inputs[:]
+        while script != "":
+            script, stack = self.load_stack_helper(script, stack)
+            if script == None or stack == None:
+                return None
+
+        stack.reverse()
+        return stack # we want to use list.pop() later
+
 #Example of use:
 if __name__ == "__main__":
     parser = Parser()
-    start_time = time.perf_counter()
-    parser.process_blocks(739000, 739001)
-    parser.print_statistics(start_time)
+    #start_time = time.perf_counter()
+    #parser.process_blocks(739000, 739001)
+    #parser.print_statistics(start_time)
+    stack = parser.load_stack("5221036c3735b2bf370501c3b872498de54b39ab5afa83d8ce7f6aec43f63a812265b421032b03a42faf387dd5c604435cd48d26b8827fa28a5d4d0f9a18b5cefe443bb4102102ebbd4ecea67dd980fc4854cc13b1f10cefafdafe8b1eb8e5ce73939b59a0477c53ae", [])
+    print(stack.pop())
