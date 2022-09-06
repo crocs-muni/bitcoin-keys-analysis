@@ -40,7 +40,7 @@ class Parser:
     DICTS = [(ecdsa_data, "ecdsa_data"), (unmatched_ecdsa_data, "unmatched_ecdsa_data"),\
              (schnorr_data, "schnorr_data"), (unmatched_schnorr_data, "unmatched_schnorr_data")]
 
-    ECDSA_SIG_LENGTHS = (148, 146, 144, 142, 140)   # Lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
+    ECDSA_SIG_LENGTHS = (146, 144, 142)   # Lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
     ECDSA_PUBKEY_LENGTHS = (66, 130)
 
     # Schnorr signature in bitcoin itself is always 64 bytes, but it's possible to set non-default hash_type in 65th byte.
@@ -49,7 +49,19 @@ class Parser:
     SCHNORR_PUBKEY_LENGTH = 64
 
     def correct_ecdsa_key(self, suspected_key):
-        return (len(suspected_key) in self.ECDSA_PUBKEY_LENGTHS) and (suspected_key[0] == '0') and (suspected_key[1] in ('2', '3', '4'))
+
+        if len(suspected_key) not in self.ECDSA_PUBKEY_LENGTHS:
+            return False
+        if suspected_key[0] != '0':
+            return False
+
+        if suspected_key[1] in ('2', '3') and len(suspected_key) == 66:
+            return True
+
+        if suspected_key[1] == '4' and len(suspected_key) == 130:
+            return True
+
+        return False
 
     def correct_schnorr_key(self, suspected_key):
         return len(suspected_key) == self.SCHNORR_PUBKEY_LENGTH
