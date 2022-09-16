@@ -578,12 +578,43 @@ class Parser:
         stack.reverse()
         return stack # we want to use list.pop() later
 
+
+    def length_based_parse(self, stack):
+        ecdsa_keys = []
+        ecdsa_sigs = []
+        schnorr_keys = []
+        schnorr_sigs = []
+
+        while stack != []:
+            item = stack.pop()
+            if item[:3] == "OP_":
+                continue
+
+            if self.correct_ecdsa_key(item):
+                ecdsa_keys.append(item)
+                continue
+
+            if self.correct_ecdsa_signature(item):
+                ecdsa_sigs.append(item)
+                continue
+
+            if self.correct_schnorr_key(item):
+                schnorr_keys.append(item)
+                continue
+
+            if self.correct_schnorr_signature(item):
+                schnorr_sigs.append(item)
+                continue
+
+            print("Unknown stack item:", item)
+
+        return ecdsa_keys, ecdsa_sigs, schnorr_keys, schnorr_sigs
+
 #Example of use:
 if __name__ == "__main__":
     parser = Parser()
     #start_time = time.perf_counter()
     #parser.process_blocks(739000, 739001)
     #parser.print_statistics(start_time)
-    stack = parser.load_stack("5221036c3735b2bf370501c3b872498de54b39ab5afa83d8ce7f6aec43f63a812265b421032b03a42faf387dd5c604435cd48d26b8827fa28a5d4d0f9a18b5cefe443bb4102102ebbd4ecea67dd980fc4854cc13b1f10cefafdafe8b1eb8e5ce73939b59a0477c53ae", [])
-    while stack != []:
-        print(stack.pop())
+    stack = parser.load_stack("20f5b059b9a72298ccbefff59d9b943f7e0fc91d8a3b944a95e7b6390cc99eb5f4ac", ["7b5d614a4610bf9196775791fcc589597ca066dcd10048e004cd4c7341bb4bb90cee4705192f3f7db524e8067a5222c7f09baf29ef6b805b8327ecd1e5ab83ca"])
+    print(stack)

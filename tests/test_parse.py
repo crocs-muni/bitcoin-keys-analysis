@@ -443,3 +443,36 @@ def test_correct_ecdsa_signature(signature: str, expected_result: bool):
                          ])
 def test_correct_schnorr_signature(signature: str, expected_result: bool):
     assert parser.correct_schnorr_signature(signature) == expected_result
+
+
+@pytest.mark.parametrize("stack, expected_tuple", [
+        (
+            ['OP_CHECKMULTISIG', 'OP_3', '02ebbd4ecea67dd980fc4854cc13b1f10cefafdafe8b1eb8e5ce73939b59a0477c', '032b03a42faf387dd5c604435cd48d26b8827fa28a5d4d0f9a18b5cefe443bb410', '036c3735b2bf370501c3b872498de54b39ab5afa83d8ce7f6aec43f63a812265b4', 'OP_2', "3044022073e7d12cb72f25ef79d4dd2fd5973d0362f882dc996e441634f5837627afe78b02203849685e1fb6749833202f934339262e678d96654f93c294d80006d02ac2c96601", "304402203c7a05b7cc49daa7c05fcf213d196d2530f4ce7e07fe9551084081e0f108870502207fcb1574cf1f2386ed68dd275e56b9290ccb25b9cc48fe1df151049d4ca638ea01"],
+            (
+                ['036c3735b2bf370501c3b872498de54b39ab5afa83d8ce7f6aec43f63a812265b4', '032b03a42faf387dd5c604435cd48d26b8827fa28a5d4d0f9a18b5cefe443bb410', '02ebbd4ecea67dd980fc4854cc13b1f10cefafdafe8b1eb8e5ce73939b59a0477c'], # ECDSA keys
+                ["304402203c7a05b7cc49daa7c05fcf213d196d2530f4ce7e07fe9551084081e0f108870502207fcb1574cf1f2386ed68dd275e56b9290ccb25b9cc48fe1df151049d4ca638ea01", "3044022073e7d12cb72f25ef79d4dd2fd5973d0362f882dc996e441634f5837627afe78b02203849685e1fb6749833202f934339262e678d96654f93c294d80006d02ac2c96601"], # ECDSA signatures
+                [], # Schnorr keys
+                [] # Schnorr signatures
+            )
+        ),
+        (
+            ['OP_CHECKSIG', 'f5b059b9a72298ccbefff59d9b943f7e0fc91d8a3b944a95e7b6390cc99eb5f4', '7b5d614a4610bf9196775791fcc589597ca066dcd10048e004cd4c7341bb4bb90cee4705192f3f7db524e8067a5222c7f09baf29ef6b805b8327ecd1e5ab83ca'],
+            (
+                [], # ECDSA keys
+                [], # ECDSA signatures
+                ['f5b059b9a72298ccbefff59d9b943f7e0fc91d8a3b944a95e7b6390cc99eb5f4'], # Schnorr keys
+                ['7b5d614a4610bf9196775791fcc589597ca066dcd10048e004cd4c7341bb4bb90cee4705192f3f7db524e8067a5222c7f09baf29ef6b805b8327ecd1e5ab83ca'] # Schnorr signatures
+            )
+        ),
+        (
+            ['foo', 'bar', '42'],
+            (
+                [], # ECDSA keys
+                [], # ECDSA signatures
+                [], # Schnorr keys
+                [] # Schnorr signatures
+            )
+        )
+    ])
+def test_length_based_parse(stack: list, expected_tuple: tuple):
+    assert parser.length_based_parse(stack) == expected_tuple
