@@ -416,3 +416,30 @@ def test_process_output_p2tr(txid: str, vout_n: int, expected_result: bool, expe
 def test_load_stack(script: str, inputs: list, expected_stack: list):
     expected_stack.reverse()
     assert parser.load_stack(script, inputs) == expected_stack
+
+
+@pytest.mark.parametrize("signature, expected_result",
+        [("30440220738cbcb0aea8c1744888aea81e1079c39366691147367c71ef545afddb02dd460220628d9aa550175bde3a959d608036f1a856986a9ccbc44971e7c7776728095d5a01", True), # real ECDSA signature
+         ("30450221008ca7c251b8d11eb86331ecad6a97fe0484c38c256457e4191a36977e06394a1b02201d93199fb9a2e3bc5366bf73254b785b5f068d36c098b45183dee361d25e4ec401", True),
+         ("30450221008ca7c251b8d11eb86331ecad6a97fe0484c38c256457e4191a36977e06394a1b02201d93199fb9a2e3bc5366bf73254b785b5f068d36c098b45183dee361d25e4ec4[ALL]", False),
+         ("134896c42cd95680b048845847c8054756861ffab7d4abab72f6508d67d1ec0c590287ec2161dd7884983286e1cd56ce65c08a24ee0476ede92678a93b1b180c", False), # Schnorr's signature
+         ("0313efa7c496f2340a7b7d76653d4cf69761b608e2ff96503e64e1883713324cac", False), # ECDSA public key
+         ("5f4237bd7dae576b34abc8a9c6fa4f0e4787c04234ca963e9e96c8f9b67b56d1", False) # Schnorr's key
+                         ])
+def test_correct_ecdsa_signature(signature: str, expected_result: bool):
+    assert parser.correct_ecdsa_signature(signature) == expected_result
+
+
+@pytest.mark.parametrize("signature, expected_result",
+        [("134896c42cd95680b048845847c8054756861ffab7d4abab72f6508d67d1ec0c590287ec2161dd7884983286e1cd56ce65c08a24ee0476ede92678a93b1b180c", True), # Real Schnorr's signature
+         ("d97a5bf08e49c8c667efea45dea868d392ee3e10a6f425846e9231c12402a86b791b6701379a9a66ee8b41f46e81ca4d1c484c304664a64f7ad1e79c0840828201", True),
+         ("d97a5bf08e49c8c667efea45dea868d392ee3e10a6f425846e9231c12402a86b791b6701379a9a66ee8b41f46e81ca4d1c484c304664a64f7ad1e79c0840828281", True),
+         ("d97a5bf08e49c8c667efea45dea868d392ee3e10a6f425846e9231c12402a86b791b6701379a9a66ee8b41f46e81ca4d1c484c304664a64f7ad1e79c0840828251", False),
+         ("d97a5bf08e49c8c667efea45dea868d392ee3e10a6f425846e9231c12402a86b791b6701379a9a66ee8b41f46e81ca4d1c484c304664a64f7ad1e79c0840828205", False),
+         ("30450221008ca7c251b8d11eb86331ecad6a97fe0484c38c256457e4191a36977e06394a1b02201d93199fb9a2e3bc5366bf73254b785b5f068d36c098b45183dee361d25e4ec401", False), # ECDSA signature
+         ("30450221008ca7c251b8d11eb86331ecad6a97fe0484c38c256457e4191a36977e06394a1b02201d93199fb9a2e3bc5366bf73254b785b5f068d36c098b45183dee361d25e4ec4[ALL]", False),
+         ("0313efa7c496f2340a7b7d76653d4cf69761b608e2ff96503e64e1883713324cac", False), # ECDSA public key
+         ("5f4237bd7dae576b34abc8a9c6fa4f0e4787c04234ca963e9e96c8f9b67b56d1", False) # Schnorr's key
+                         ])
+def test_correct_schnorr_signature(signature: str, expected_result: bool):
+    assert parser.correct_schnorr_signature(signature) == expected_result

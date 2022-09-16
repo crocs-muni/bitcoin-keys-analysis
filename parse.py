@@ -63,8 +63,32 @@ class Parser:
 
         return False
 
+    def correct_ecdsa_signature(self, signature):
+        if len(signature) not in self.ECDSA_SIG_LENGTHS:
+            return False
+
+        if signature[:2] != "30" or signature[4:6] != "02":
+            return False
+
+        if signature[2] != '4': # Length of following data in one byte. Just check that it's about 0x40.
+            return False
+
+        return True
+
     def correct_schnorr_key(self, suspected_key):
         return len(suspected_key) == self.SCHNORR_PUBKEY_LENGTH
+
+    def correct_schnorr_signature(self, signature):
+        if len(signature) not in self.SCHNORR_SIG_LENGTHS:
+            return False
+
+        if len(signature) == 130:
+            if signature[-2] != '0' and signature[-2] != '8':
+                return False
+            if signature[-1] not in ('0', '1', '2', '3'):
+                return False
+
+        return True
 
 
     def increment_key_count(self, suspected_key):
@@ -93,7 +117,7 @@ class Parser:
         length = int(signature[:2], 16) # len of signature in bytes
         signature = signature[2: 2 + length*2]
 
-        if len(signature) not in self.ECDSA_SIG_LENGTHS:
+        if not self.correct_ecdsa_signature(signature):
             signature = "NaN"
 
         return signature
@@ -177,7 +201,7 @@ class Parser:
             signature = script_sig[2: 2 + length*2]
             script_sig = script_sig[2 + length*2:]
 
-        if len(signature) not in self.ECDSA_SIG_LENGTHS:
+        if not self.correct_ecdsa_signature(signature):
             signature = "NaN"
         return signature
 
@@ -186,7 +210,7 @@ class Parser:
             return "NaN"
 
         signature = vin["txinwitness"][i + 1] # Skipping the empty item
-        if len(signature) not in self.ECDSA_SIG_LENGTHS:
+        if not self.correct_ecdsa_signature(signature):
             signature = "NaN"
         return signature
 
@@ -196,7 +220,7 @@ class Parser:
 
         signature = vin['txinwitness'][i]
 
-        if not len(signature) in self.SCHNORR_SIG_LENGTHS:
+        if not self.correct_schnorr_signature(signature):
             signature = "NaN"
 
         if len(signature) == 130:
@@ -315,7 +339,7 @@ class Parser:
             return "NaN"
 
         signature = vin['txinwitness'][0]
-        if len(signature) not in self.ECDSA_SIG_LENGTHS:
+        if not self.correct_ecdsa_signature(signature):
             signature = "NaN"
         return signature
 
@@ -561,4 +585,5 @@ if __name__ == "__main__":
     #parser.process_blocks(739000, 739001)
     #parser.print_statistics(start_time)
     stack = parser.load_stack("5221036c3735b2bf370501c3b872498de54b39ab5afa83d8ce7f6aec43f63a812265b421032b03a42faf387dd5c604435cd48d26b8827fa28a5d4d0f9a18b5cefe443bb4102102ebbd4ecea67dd980fc4854cc13b1f10cefafdafe8b1eb8e5ce73939b59a0477c53ae", [])
-    print(stack.pop())
+    while stack != []:
+        print(stack.pop())
