@@ -27,7 +27,7 @@ NOTE2: Script can not parse P2SH and P2WSH transactions, where:
 
     --- Decision ---
 
-    Way 3: "hybrid".
+    Implement "length-based", then, if needed, implement "hybrid" on top of it.
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Tailor for multi-thread meta-center parsing.
 ------------------------------------------------------------------------------------------------------------------------------
