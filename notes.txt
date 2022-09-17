@@ -29,6 +29,8 @@ NOTE2: Script can not parse P2SH and P2WSH transactions, where:
 
     Implement "length-based", then, if needed, implement "hybrid" on top of it.
 ------------------------------------------------------------------------------------------------------------------------------
+<TODO2>: Do not pass transaction to all functions, save vin/vout number in xxx_data.txt .
+------------------------------------------------------------------------------------------------------------------------------
 NOTE: Tailor for multi-thread meta-center parsing.
 ------------------------------------------------------------------------------------------------------------------------------
 PLAN: Tailor all the scripts so that analysis could run in real time (non-stop).
