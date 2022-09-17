@@ -252,7 +252,7 @@ class Parser:
             if not self.correct_schnorr_key(suspected_key):
                 return False
             self.add_key_to_data_dict(transaction, suspected_key, signature, self.schnorr_data)
-        
+
         return True
 
     # Make me more clean pls
@@ -610,6 +610,34 @@ class Parser:
             print("Unknown stack item:", item)
 
         return ecdsa_keys, ecdsa_sigs, schnorr_keys, schnorr_sigs
+
+
+    def new_parse_serialized_script(self, transaction, script, inputs):
+        stack = self.load_stack(script, inputs)
+        temp_tuple = self.length_based_parse(stack)
+        if temp_tuple == ([], [], [], []): # If no collected_data
+            return False
+
+        ecdsa_keys = temp_tuple[0]
+        ecdsa_sigs = temp_tuple[1]
+        schnorr_keys = temp_tuple[2]
+        schnorr_sigs = temp_tuple[3]
+
+        if len(ecdsa_keys) > 0:
+            if len(ecdsa_keys) == 1 and len(ecdsa_sigs) == 1:
+                self.add_key_to_data_dict(transaction, ecdsa_keys[0], ecdsa_sigs[0], self.ecdsa_data)
+            else:
+                for key in ecdsa_keys:
+                    self.add_key_to_unmatched_data_dict(transaction, key, ecdsa_sigs, self.unmatched_ecdsa_data)
+
+        if len(schnorr_keys) > 0:
+            if len(schnorr_keys) == 1 and len(schnorr_sigs) == 1:
+                self.add_key_to_data_dict(transaction, schnorr_keys[0], schnorr_sigs[0], self.schnorr_data)
+            else:
+                for key in ecdsa_keys:
+                    self.add_key_to_unmatched_data_dict(transaction, key, schnorr_sigs, self.unmatched_schnorr_data)
+
+        return True
 
 #Example of use:
 if __name__ == "__main__":
