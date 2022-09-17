@@ -547,6 +547,12 @@ class Parser:
                 return script, stack
 
         # OP_PUSHBYTES
+        try:
+            int(command, 16)
+        except:
+            print("Invalid script command '", command, "'", sep = '')
+            return None, None
+
         length = int(command, 16) # Length in bytes
         if length < 76: # For values bigger than 76 bytes OP_PUSHDATA codes are used.
             length *= 2 # One byte is two letters in hex-encoded strings.
@@ -574,7 +580,7 @@ class Parser:
         while script != "":
             script, stack = self.load_stack_helper(script, stack)
             if script == None or stack == None:
-                return None
+                return []
 
         stack.reverse()
         return stack # we want to use list.pop() later

@@ -411,7 +411,10 @@ def test_process_output_p2tr(txid: str, vout_n: int, expected_result: bool, expe
          "OP_DROP",
          "0311fa1e2edfd0c1d48f7b1a304af8ace5b40b002b218d3c12419747c8bdf0da55",
          "OP_ENDIF",
-         "OP_CHECKSIG"])
+         "OP_CHECKSIG"]),
+    ("foo bar",
+     ["foo", "bar", "42"],
+     [])
                                                     ])
 def test_load_stack(script: str, inputs: list, expected_stack: list):
     expected_stack.reverse()
@@ -571,7 +574,7 @@ def test_length_based_parse(stack: list, expected_tuple: tuple):
     ),
     ( # P2PKH
         "ce6fb9e782df2f5dbd4190069c3ec31ccf1ea2429b890da3c2b12ef37037a5be", # vin 0
-        "", # place "foo bar" here
+        "foo bar",
         [],
         False,
         (
