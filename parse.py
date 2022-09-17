@@ -547,8 +547,9 @@ class Parser:
                 return script, stack
 
         # OP_PUSHBYTES
-        length = int(command, 16) * 2 # One byte is two letters in hex-encoded strings.
+        length = int(command, 16) # Length in bytes
         if length < 76: # For values bigger than 76 bytes OP_PUSHDATA codes are used.
+            length *= 2 # One byte is two letters in hex-encoded strings.
             stack.append(script[:length])
             script = script[length:]
             return script, stack
