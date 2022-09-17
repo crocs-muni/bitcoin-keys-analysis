@@ -476,3 +476,118 @@ def test_correct_schnorr_signature(signature: str, expected_result: bool):
     ])
 def test_length_based_parse(stack: list, expected_tuple: tuple):
     assert parser.length_based_parse(stack) == expected_tuple
+
+@pytest.mark.parametrize("txid, script, inputs, expected_result, expected_tuple", [
+    ( # P2SH
+        "00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8", # vin 0
+        "5221036c3735b2bf370501c3b872498de54b39ab5afa83d8ce7f6aec43f63a812265b421032b03a42faf387dd5c604435cd48d26b8827fa28a5d4d0f9a18b5cefe443bb4102102ebbd4ecea67dd980fc4854cc13b1f10cefafdafe8b1eb8e5ce73939b59a0477c53ae",
+        ["3045022100e40fbdec298b1fd267e43561e5d43822f0156c47772df2c1e955efe0f1f0a307022018946e8b11b7e1fb02f5c8ac6832991655dc44229a018aa19b9fc9a3daa66bf601", "304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e501"],
+        True,
+        (
+            {}, # ecdsa_data
+            {   # ecdsa_unmathced_data
+                "036c3735b2bf370501c3b872498de54b39ab5afa83d8ce7f6aec43f63a812265b4": [
+                    {
+                    "ID": "00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8",
+                    "time": 1459929415,
+                    "signatures": [
+                        "3045022100e40fbdec298b1fd267e43561e5d43822f0156c47772df2c1e955efe0f1f0a307022018946e8b11b7e1fb02f5c8ac6832991655dc44229a018aa19b9fc9a3daa66bf601",
+                        "304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e501"
+                                ]
+                    }],
+                "032b03a42faf387dd5c604435cd48d26b8827fa28a5d4d0f9a18b5cefe443bb410": [
+                    {
+                    "ID": "00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8",
+                    "time": 1459929415,
+                    "signatures": [
+                        "3045022100e40fbdec298b1fd267e43561e5d43822f0156c47772df2c1e955efe0f1f0a307022018946e8b11b7e1fb02f5c8ac6832991655dc44229a018aa19b9fc9a3daa66bf601",
+                        "304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e501"
+                                ]
+                    }],
+                "02ebbd4ecea67dd980fc4854cc13b1f10cefafdafe8b1eb8e5ce73939b59a0477c": [
+                    {
+                    "ID": "00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8",
+                    "time": 1459929415,
+                    "signatures": [
+                        "3045022100e40fbdec298b1fd267e43561e5d43822f0156c47772df2c1e955efe0f1f0a307022018946e8b11b7e1fb02f5c8ac6832991655dc44229a018aa19b9fc9a3daa66bf601",
+                        "304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e501"
+                                ]
+                    }]
+            },
+            {}, # schnorr_data
+            {}  # schnorr_unmatched_data
+        )
+    ),
+    ( # P2WSH
+        "208a95aff0c4243fdc7c610b700e1eb6a19bb786f3d96d79ecd410183f067687", # vin 0
+        "21039c7a814e68ca713e41e70fb63b1db752be1290501925349d597517e8d21b531aad2103fcf27a3caa82bc0eeba16856c12b42158331f5d11aaef0ec6b0f9a6ef1921d5dac73640380ca00b268",
+        ["304402205fcdf37304778276f380b60429049f9ae32543f1719bfba02dd46541e501b0ac022024afdbf368f0772510f9a8a6689546e5456c91556eab36960ce3f12a914b541401",
+         "30440220598dea760ffe62f0dbed37cb0a270d14aa97ff5e2c5f67a6c2df0daba540a93202203ca9ef1c97ba9f7c449b51abcd573828e3726ae69038c90b658c0f5b0967a92201"],
+        True,
+        (
+            {}, # ecdsa_data
+            {   # ecdsa_unmathced_data
+                "039c7a814e68ca713e41e70fb63b1db752be1290501925349d597517e8d21b531a": [
+                    {
+                    "ID": "208a95aff0c4243fdc7c610b700e1eb6a19bb786f3d96d79ecd410183f067687",
+                    "time": 1654186816,
+                    "signatures" : [
+                        "304402205fcdf37304778276f380b60429049f9ae32543f1719bfba02dd46541e501b0ac022024afdbf368f0772510f9a8a6689546e5456c91556eab36960ce3f12a914b541401",
+                        "30440220598dea760ffe62f0dbed37cb0a270d14aa97ff5e2c5f67a6c2df0daba540a93202203ca9ef1c97ba9f7c449b51abcd573828e3726ae69038c90b658c0f5b0967a92201" 
+                                    ]
+                    }],
+                "03fcf27a3caa82bc0eeba16856c12b42158331f5d11aaef0ec6b0f9a6ef1921d5d": [
+                    {
+                    "ID": "208a95aff0c4243fdc7c610b700e1eb6a19bb786f3d96d79ecd410183f067687",
+                    "time": 1654186816,
+                    "signatures" : [
+                        "304402205fcdf37304778276f380b60429049f9ae32543f1719bfba02dd46541e501b0ac022024afdbf368f0772510f9a8a6689546e5456c91556eab36960ce3f12a914b541401",
+                        "30440220598dea760ffe62f0dbed37cb0a270d14aa97ff5e2c5f67a6c2df0daba540a93202203ca9ef1c97ba9f7c449b51abcd573828e3726ae69038c90b658c0f5b0967a92201" 
+                                    ]
+                    }]
+            },
+            {}, # schnorr_data
+            {}  # schnorr_unmatched_data
+        )
+    ),
+    ( # P2TR
+        "37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8", # vin 1
+        "20f5b059b9a72298ccbefff59d9b943f7e0fc91d8a3b944a95e7b6390cc99eb5f4ac",
+        ["7b5d614a4610bf9196775791fcc589597ca066dcd10048e004cd4c7341bb4bb90cee4705192f3f7db524e8067a5222c7f09baf29ef6b805b8327ecd1e5ab83ca"],
+        True,
+        (
+            {}, # ecdsa_data
+            {}, # unmatched_ecdsa_data
+            {   # schnorr_data
+                "f5b059b9a72298ccbefff59d9b943f7e0fc91d8a3b944a95e7b6390cc99eb5f4": [
+                {
+                    "ID": "37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8",
+                    "time": 1636868413,
+                    "signature": "7b5d614a4610bf9196775791fcc589597ca066dcd10048e004cd4c7341bb4bb90cee4705192f3f7db524e8067a5222c7f09baf29ef6b805b8327ecd1e5ab83ca"
+                }]
+            },
+            {}  # unmathced_schnorr_data
+        )
+    ),
+    ( # P2PKH
+        "ce6fb9e782df2f5dbd4190069c3ec31ccf1ea2429b890da3c2b12ef37037a5be", # vin 0
+        "", # place "foo bar" here
+        [],
+        False,
+        (
+            {}, # ecdsa_data
+            {}, # unmatched_ecdsa_data
+            {}, # schnorr_data
+            {}  # unmatched_schnorr_data 
+        )
+    )
+                             ])
+def test_new_parse_serialized_script(txid: str, script: str, inputs: list, expected_result: bool, expected_tuple: tuple):
+    parser.ecdsa_data = {}
+    parser.unmatched_ecdsa_data = {}
+    parser.schnorr_data = {}
+    parser.unmatched_schnorr_data = {}
+
+    transaction = parser.rpc.getrawtransaction(txid, True)
+    assert parser.new_parse_serialized_script(transaction, script, inputs) == expected_result
+    assert (parser.ecdsa_data, parser.unmatched_ecdsa_data, parser.schnorr_data, parser.unmatched_schnorr_data) == expected_tuple
