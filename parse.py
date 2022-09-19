@@ -563,10 +563,13 @@ class Parser:
         # OP_PUSHDATA
         if command == "4c": # OP_PUSHDATA1
             length = int(script[:2], 16) * 2
+            script = script[2:]
         if command == "4d": # OP_PUSHDATA2
             length = int(script[:4], 16) * 2
+            script = script[4:]
         if command == "4e": # OP_PUSHDATA4
             length = int(script[:8], 16) * 2
+            script = script[8:]
 
         if len(script) < length: # Supposed to never happen, but just to be sure.
             return None, None
