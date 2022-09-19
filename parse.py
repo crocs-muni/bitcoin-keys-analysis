@@ -378,7 +378,8 @@ class Parser:
             return False
 
         script = vin['txinwitness'][-1]
-        return self.parse_serialized_script(transaction, vin, script, "P2WSH")
+        inputs = vin['txinwitness'][:-1]
+        return self.new_parse_serialized_script(transaction, script, inputs)
  
 
     def handle_p2tr_keypath(self, transaction, vin):
