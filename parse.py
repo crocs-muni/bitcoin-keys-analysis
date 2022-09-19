@@ -420,7 +420,8 @@ class Parser:
             toreturn = True
 
         script = vin["txinwitness"][-2]
-        if self.parse_serialized_script(transaction, vin, script, "P2TR"):
+        inputs = vin["txinwitness"][:-2]
+        if self.new_parse_serialized_script(transaction, script, inputs):
             print("Successful P2TR [SCRIPT]!!! TXID:", transaction["txid"])
             toreturn = True
 
