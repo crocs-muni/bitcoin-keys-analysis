@@ -57,16 +57,6 @@ def test_extract_signature_p2pk_p2pkh(txid: str, vin_n: int, expected_signature:
     assert parser.extract_signature_p2pk_p2pkh(vin) == expected_signature
 
 
-@pytest.mark.parametrize("txid, vin_n, i, expected_signature", [
-    ("00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8", 0, 0, "3045022100e40fbdec298b1fd267e43561e5d43822f0156c47772df2c1e955efe0f1f0a307022018946e8b11b7e1fb02f5c8ac6832991655dc44229a018aa19b9fc9a3daa66bf601"), # P2SH
-    ("00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8", 0, 1, "304402203137f3f5b00460854577cc8cc233030896e4bf464d06a4ec8b6ae768637e182602204a215cbe3ef950452964f248d84951e7646283c6cdbefd6dbd90613ecd2524e501"),
-    ("00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8", 1, 2, "NaN")
-                                                            ])
-def test_extract_signature_p2sh(txid: str, vin_n: int, i: int, expected_signature: str):
-    vin = parser.rpc.getrawtransaction(txid, True)["vin"][vin_n]
-    assert parser.extract_signature_p2sh(vin, i) == expected_signature
-
-
 @pytest.mark.parametrize("txid, vin_n, expected_signature", [
     ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 0, "NaN"), # P2SH
     ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, "NaN"), # P2WSH
@@ -76,17 +66,6 @@ def test_extract_signature_p2sh(txid: str, vin_n: int, i: int, expected_signatur
 def test_extract_signature_p2wpkh(txid: str, vin_n: int, expected_signature: str):
     vin = parser.rpc.getrawtransaction(txid, True)["vin"][vin_n]
     assert parser.extract_signature_p2wpkh(vin) == expected_signature
-
-
-@pytest.mark.parametrize("txid, vin_n, i, expected_signature", [
-    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 0, 0, "NaN"), # P2SH
-    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, 0, "3045022100bed582633b971c9786720c325472b0808727b72280de798a995939f91c13cb3c0220216fb5dfdfb2914e71f54f1a1c2f54f65fb22e083d1c843b8d9487120f238d0a01"), # P2WSH
-    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, 1, "3045022100a28f052fbdb37dba174652ff30ce128f68f8fbfbe8a7d286d417cd7f79c79ad70220373412b7f0c9a1f85e693addb57c11a5598ef2b380764910fc843702471db35e01"),
-    ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, 2, "NaN")
-                                                            ])
-def test_extract_signature_p2wsh(txid: str, vin_n: int, i: int, expected_signature: str):
-    vin = parser.rpc.getrawtransaction(txid, True)["vin"][vin_n]
-    assert parser.extract_signature_p2wsh(vin, i) == expected_signature
 
 
 @pytest.mark.parametrize("txid, vin_n, i, expected_signature", [
@@ -591,12 +570,12 @@ def test_length_based_parse(stack: list, expected_tuple: tuple):
         )
     )
                              ])
-def test_new_parse_serialized_script(txid: str, script: str, inputs: list, expected_result: bool, expected_tuple: tuple):
+def test_parse_serialized_script(txid: str, script: str, inputs: list, expected_result: bool, expected_tuple: tuple):
     parser.ecdsa_data = {}
     parser.unmatched_ecdsa_data = {}
     parser.schnorr_data = {}
     parser.unmatched_schnorr_data = {}
 
     transaction = parser.rpc.getrawtransaction(txid, True)
-    assert parser.new_parse_serialized_script(transaction, script, inputs) == expected_result
+    assert parser.parse_serialized_script(transaction, script, inputs) == expected_result
     assert (parser.ecdsa_data, parser.unmatched_ecdsa_data, parser.schnorr_data, parser.unmatched_schnorr_data) == expected_tuple

@@ -187,140 +187,6 @@ class Parser:
         return True
 
 
-    # In case of checksig pass i = 0, same for p2wsh and p2tr
-    def extract_signature_p2sh(self, vin, i): # Also works for P2PK and P2PKH, so extract_signature_p2pk_p2pkh() is kind of useless..
-        script_sig = vin["scriptSig"]["hex"]
-        if script_sig[:2] == "00":
-            script_sig = script_sig[2:]
-
-        signature = "NaN"
-        for a in range(i + 1):
-            if script_sig == "" or script_sig[:2] == "04":  # 0x04 is hex of OP_PUSHDATA1 after which redeem script goes
-                break
-            length = int(script_sig[:2], 16)
-            signature = script_sig[2: 2 + length*2]
-            script_sig = script_sig[2 + length*2:]
-
-        if not self.correct_ecdsa_signature(signature):
-            signature = "NaN"
-        return signature
-
-    def extract_signature_p2wsh(self, vin, i):
-        if not "txinwitness" in vin.keys() or len(vin["txinwitness"]) < 2:
-            return "NaN"
-
-        signature = vin["txinwitness"][i + 1] # Skipping the empty item
-        if not self.correct_ecdsa_signature(signature):
-            signature = "NaN"
-        return signature
-
-    def extract_signature_p2tr(self, vin, i):
-        if not "txinwitness" in vin.keys() or len(vin["txinwitness"]) <= i:
-            return "NaN"
-
-        signature = vin['txinwitness'][i]
-
-        if not self.correct_schnorr_signature(signature):
-            signature = "NaN"
-
-        if len(signature) == 130:
-            signature = signature[:-2]  # Removing 'hash_type' byte (BIP341 - Common signature message)
-
-        return signature
-
-
-    def handle_checksig(self, transaction, vin, script, transaction_type):
-        if ' ' in script:
-            suspected_key = script.split(' ')[0] # blocks in 2019 get parsed with signature[all] pubkey somescript
-        else:
-            suspected_key = script[2:-2] # cutting length and hex-op_code. it's bad, but anyway I'll rewrite it soon.
-
-        if transaction_type == "P2SH":
-            signature = self.extract_signature_p2sh(vin, 0)
-        if transaction_type == "P2WSH":
-            signature = self.extract_signature_p2wsh(vin, 0)
-        if transaction_type == "P2TR":
-            signature = self.extract_signature_p2tr(vin, 0)
-
-
-        if transaction_type in ("P2SH", "P2WSH"):
-            if not self.correct_ecdsa_key(suspected_key):
-                return False
-            self.add_key_to_data_dict(transaction, suspected_key, signature, self.ecdsa_data)
-
-        if transaction_type == "P2TR":
-            if not self.correct_schnorr_key(suspected_key):
-                return False
-            self.add_key_to_data_dict(transaction, suspected_key, signature, self.schnorr_data)
-
-        return True
-
-    # Make me more clean pls
-    def handle_checkmultisig(self, transaction, vin, script, transaction_type):
-        toreturn = False
-        if script[0] == '1' and script[1] == '4': # Transactions found in block 570006 that break the script completely
-            return False
-
-        num_sigs = int(script[1], 16)   # Checking the number of signatures present
-        script = script[2:-2]           # Cutting instructions at beginning and end"
-        num_keys = int(script[-1], 16)  # Format should be <num of signatures required> <pubkey1> ... <pubkeyn> <num of all pubkeys>
-        script = script[:-2]            # Cutting counter at beginning and end"
-
-        sigs = []
-        for j in range(num_sigs):
-
-                if transaction_type == "P2SH":
-                    signature = self.extract_signature_p2sh(vin, j)
-                if transaction_type == "P2WSH":
-                    signature = self.extract_signature_p2wsh(vin, j)
-                if transaction_type == "P2TR":
-                    signature = self.extract_signature_p2tr(vin, j)
-                sigs.append(signature)
-
-        for i in range(num_keys):
-            key_len = int(script[:2], 16)
-            suspected_key = script[2:(key_len*2) + 2]
-            script = script[((key_len*2) + 2):]
-
-            # Choose dictionary to save data to
-            if num_sigs == num_keys:
-                data_dict = self.ecdsa_data
-                if transaction_type == "P2TR":
-                    data_dict = self.schnorr_data
-            else:
-                data_dict = self.unmatched_ecdsa_data
-                if transaction_type == "P2TR":
-                    data_dict = self.unmatched_schnorr_data
-
-
-            if (transaction_type in ("P2SH, P2WSH") and self.correct_ecdsa_key(suspected_key))\
-            or (transaction_type == "P2TR" and self.correct_schnorr_key(suspected_key)):
-                if num_sigs == num_keys:
-                    self.add_key_to_data_dict(transaction, suspected_key, sigs[i], data_dict)
-                else:
-                    self.add_key_to_unmatched_data_dict(transaction, suspected_key, sigs, data_dict)
-                toreturn = True
-
-        return toreturn
-
-    # This function <<saves>> found data (if any) to data dictionaries.
-    # Returns true at least one key was extracted.
-    # Note that <transaction_type> argument is one of these: "P2SH", "P2WSH", "P2TR".
-    def parse_serialized_script(self, transaction, vin, script, transaction_type):
-
-        if not transaction_type in ("P2SH", "P2WSH", "P2TR"):
-            print("You have mistake in your code. Please read caption of parse_serialized_script().")
-            return False
-
-        if script[-1] == 'c' and script[-2] == 'a': # Checksig instruction in hex is "ac"
-            return self.handle_checksig(transaction, vin, script, transaction_type)
-
-        if script[-1] == 'e' and script[-2] == 'a': # Checkmultisig instruction in hex is "ae"
-            return self.handle_checkmultisig(transaction, vin, script, transaction_type)
-
-        return False
-
-
     # This function tries to process a Pay to Script hash transaction. This is a newer type of transaction with seceral subtypes
     # ScriptSig: Contains signatures. Last entry is the unlocking script that needs to be further parsed to extract public key
     # Locking script: contains a few instructions and hash of script that unlocks the spending
@@ -331,14 +197,14 @@ class Parser:
             return False
 
         temp_stack = self.load_stack(vin['scriptSig']['hex'], [])
-        temp_stack.reverse() # Later load_stack will be called again from new_parse_serialized_script(), so "unreverse" now.
+        temp_stack.reverse() # Later load_stack will be called again from parse_serialized_script(), so "unreverse" now.
         print(temp_stack)
         if len(temp_stack) < 2:
             return False
 
         script = temp_stack[-1]
         inputs = temp_stack[:-1]
-        return self.new_parse_serialized_script(transaction, script, inputs)
+        return self.parse_serialized_script(transaction, script, inputs)
 
 
     def extract_signature_p2wpkh(self, vin):
@@ -379,8 +245,23 @@ class Parser:
 
         script = vin['txinwitness'][-1]
         inputs = vin['txinwitness'][:-1]
-        return self.new_parse_serialized_script(transaction, script, inputs)
- 
+        return self.parse_serialized_script(transaction, script, inputs)
+
+
+    def extract_signature_p2tr(self, vin, i):
+        if not "txinwitness" in vin.keys() or len(vin["txinwitness"]) <= i:
+            return "NaN"
+
+        signature = vin['txinwitness'][i]
+
+        if not self.correct_schnorr_signature(signature):
+            signature = "NaN"
+
+        if len(signature) == 130:
+            signature = signature[:-2]  # Removing 'hash_type' byte (BIP341 - Common signature message)
+
+        return signature
+
 
     def handle_p2tr_keypath(self, transaction, vin):
         signature = self.extract_signature_p2tr(vin, 0)
@@ -421,7 +302,7 @@ class Parser:
 
         script = vin["txinwitness"][-2]
         inputs = vin["txinwitness"][:-2]
-        if self.new_parse_serialized_script(transaction, script, inputs):
+        if self.parse_serialized_script(transaction, script, inputs):
             print("Successful P2TR [SCRIPT]!!! TXID:", transaction["txid"])
             toreturn = True
 
@@ -631,7 +512,7 @@ class Parser:
         return ecdsa_keys, ecdsa_sigs, schnorr_keys, schnorr_sigs
 
 
-    def new_parse_serialized_script(self, transaction, script, inputs):
+    def parse_serialized_script(self, transaction, script, inputs):
         stack = self.load_stack(script, inputs)
         temp_tuple = self.length_based_parse(stack)
 
