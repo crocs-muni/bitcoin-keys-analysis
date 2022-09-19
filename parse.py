@@ -330,8 +330,15 @@ class Parser:
         if not 'scriptSig' in vin.keys() or len(vin['scriptSig']['asm'].split(" ")) < 2:
             return False
 
-        script = vin['scriptSig']['asm'].split(" ")[-1]
-        return self.parse_serialized_script(transaction, vin, script, "P2SH")
+        temp_stack = self.load_stack(vin['scriptSig']['hex'], [])
+        temp_stack.reverse() # Later load_stack will be called again from new_parse_serialized_script(), so "unreverse" now.
+        print(temp_stack)
+        if len(temp_stack) < 2:
+            return False
+
+        script = temp_stack[-1]
+        inputs = temp_stack[:-1]
+        return self.new_parse_serialized_script(transaction, script, inputs)
 
 
     def extract_signature_p2wpkh(self, vin):
@@ -617,6 +624,7 @@ class Parser:
                 continue
 
             print("Unknown stack item:", item)
+            #return False
 
         return ecdsa_keys, ecdsa_sigs, schnorr_keys, schnorr_sigs
 
@@ -624,13 +632,14 @@ class Parser:
     def new_parse_serialized_script(self, transaction, script, inputs):
         stack = self.load_stack(script, inputs)
         temp_tuple = self.length_based_parse(stack)
-        if temp_tuple == ([], [], [], []): # If no collected_data
-            return False
 
         ecdsa_keys = temp_tuple[0]
         ecdsa_sigs = temp_tuple[1]
         schnorr_keys = temp_tuple[2]
         schnorr_sigs = temp_tuple[3]
+
+        if len(ecdsa_keys) == 0 and len(schnorr_keys) == 0: # If no collected_data
+            return False
 
         if len(ecdsa_keys) > 0:
             if len(ecdsa_keys) == 1 and len(ecdsa_sigs) == 1:
