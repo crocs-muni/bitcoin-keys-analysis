@@ -40,7 +40,7 @@ class Parser:
     DICTS = [(ecdsa_data, "ecdsa_data"), (unmatched_ecdsa_data, "unmatched_ecdsa_data"),\
              (schnorr_data, "schnorr_data"), (unmatched_schnorr_data, "unmatched_schnorr_data")]
 
-    ECDSA_SIG_LENGTHS = (146, 144, 142)   # Lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
+    ECDSA_SIG_LENGTHS = (146, 144, 142, 140, 138)   # Lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
     ECDSA_PUBKEY_LENGTHS = (66, 130)
 
     # Schnorr signature in bitcoin itself is always 64 bytes, but it's possible to set non-default hash_type in 65th byte.
@@ -543,8 +543,6 @@ class Parser:
 #Example of use:
 if __name__ == "__main__":
     parser = Parser()
-    #start_time = time.perf_counter()
-    #parser.process_blocks(739000, 739001)
-    #parser.print_statistics(start_time)
-    stack = parser.load_stack("20f5b059b9a72298ccbefff59d9b943f7e0fc91d8a3b944a95e7b6390cc99eb5f4ac", ["7b5d614a4610bf9196775791fcc589597ca066dcd10048e004cd4c7341bb4bb90cee4705192f3f7db524e8067a5222c7f09baf29ef6b805b8327ecd1e5ab83ca"])
-    print(stack)
+    start_time = time.perf_counter()
+    parser.process_blocks(739000, 739001)
+    parser.print_statistics(start_time)
