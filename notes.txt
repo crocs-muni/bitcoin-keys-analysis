@@ -1,43 +1,11 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: Review/rewrite handle_checksig() and handle_checkmultisig().
-NOTE2: Script can not parse P2SH and P2WSH transactions, where:
-    1) OP_CHECKSIG or OP_CHECKMULTISIG are not at the end. Example (txid):
-        208a95aff0c4243fdc7c610b700e1eb6a19bb786f3d96d79ecd410183f067687
-        505a42d01dd26f002d5c1ba52debb15cc88f315740a239c70be996285ccccb6d
-    2) Public key is before OP_ENDIF OP_CHECKSIG. Example (txid):
-        9499b951301c14983d29b762539b22e3a2c1a59a196671172a27fe0e0a8e3bda
-    3) And likely more..
-
-<TODO>: Full rewrite of parsing serialized script is needed in order to solve it.
-    Way 1: "semantics-based", i.e. looking for op_codes, which take signatures and/or public keys as arguments, saving those args.
-    Way 2: "length-based", i.e. going through the whole stack, and if an element looks like a signature or public key (correct_xxx(), mostly based on length) save them. If exactly one signature and one key, add to xxx_data, otherwise - to unmatched_xxx_data.
-    (?) Way 3: "hybrid", at the very beggining do "length-based", and at the very end, when a private key is found, do "semantics-based" re-check and mark high/low "confidance". Maybe manual re-check of low "confidance".
-
-    --- Prons and cons ---
-
-    Way 1: + we can be more sure, that the data we collected, is what we think it is.
-           - a lot of comlications -> less readable + slower code.
-    Way 2: + easy, readable, fast.
-           - possbly can sometimes save not a real public key or signature "false pozitive".
-    Way 3: + we can be more sure, that the data we collected, is what we think it is.
-           + easy, readable, fast.
-           - a bit of additional computations at the very end (a minor con).
-
-    --- Decision ---
-
-    Implement "length-based", then, if needed, implement "hybrid" on top of it.
-------------------------------------------------------------------------------------------------------------------------------
-<TODO2>: Do not pass transaction to all functions, save vin/vout number in xxx_data.txt .
-------------------------------------------------------------------------------------------------------------------------------
-<TODO3>: README.md + re-comment code where needed.
+<TODO>: README.md + re-comment code where needed.
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Tailor for multi-thread meta-center parsing.
 ------------------------------------------------------------------------------------------------------------------------------
 PLAN: Tailor all the scripts so that analysis could run in real time (non-stop).
-------------------------------------------------------------------------------------------------------------------------------
-NOTE: In prepare_keys.py cut Schnorr keys to 16 bytes or less?
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Verbosity mode - print what exactly failed and what succeded.
 ------------------------------------------------------------------------------------------------------------------------------

@@ -48,6 +48,8 @@ class Parser:
     SCHNORR_SIG_LENGTHS = (128, 130)
     SCHNORR_PUBKEY_LENGTH = 64
 
+    state = {"txid": "", "vin/vout": "", "n": -1} # Holds info about what is currently being parsed.
+
     def correct_ecdsa_key(self, suspected_key):
 
         if len(suspected_key) not in self.ECDSA_PUBKEY_LENGTHS:
@@ -98,17 +100,19 @@ class Parser:
             self.schnorr += 1
         self.keys += 1
 
-    def add_key_to_data_dict(self, transaction, suspected_key, signature, data_dict):
+    def add_key_to_data_dict(self, suspected_key, signature, data_dict):
         if suspected_key not in data_dict.keys():
             self.increment_key_count(suspected_key)
             data_dict[suspected_key] = []
-        data_dict[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signature' : signature})
+        assert self.state["txid"] != "" and self.state["vin/vout"] != "" and self.state["n"] != -1
+        data_dict[suspected_key].append({'ID' : self.state["txid"], 'vin/vout': self.state["vin/vout"]+' '+str(self.state["n"]), 'signature' : signature})
 
-    def add_key_to_unmatched_data_dict(self, transaction, suspected_key, sigs, data_dict):
+    def add_key_to_unmatched_data_dict(self, suspected_key, sigs, data_dict):
         if suspected_key not in data_dict.keys():
             self.increment_key_count(suspected_key)
             data_dict[suspected_key] = []
-        data_dict[suspected_key].append({'ID' : transaction['txid'], 'time' : transaction['time'], 'signatures' : sigs})
+        assert self.state["txid"] != "" and self.state["vin/vout"] != "" and self.state["n"] != -1
+        data_dict[suspected_key].append({'ID' : self.state['txid'], 'vin/vout': self.state["vin/vout"]+' '+str(self.state["n"]), 'signatures' : sigs})
 
 
     def extract_signature_p2pk_p2pkh(self, vin):
@@ -123,11 +127,11 @@ class Parser:
         return signature
 
 
-    # This function tries to process a Pay to Public Key Hash transaction
+    # This function tries to process a Pay to Public Key Hash transaction.
     # ScriptSig: contains signature and public key
     # Locking script: contains hash of public key
     # returns true if key was extracted
-    def process_input_p2pkh(self, transaction, vin):
+    def process_input_p2pkh(self, vin):
 
         if not 'scriptSig' in vin.keys() or len(vin['scriptSig']['asm'].split(" ")) != 2:
             return False
@@ -138,7 +142,7 @@ class Parser:
 
         signature = self.extract_signature_p2pk_p2pkh(vin)
 
-        self.add_key_to_data_dict(transaction, suspected_key, signature, self.ecdsa_data)
+        self.add_key_to_data_dict(suspected_key, signature, self.ecdsa_data)
         return True
 
 
@@ -154,7 +158,7 @@ class Parser:
         vout = prev_transaction["vout"][vout_num]
         return vout
 
-    def process_input_p2pk(self, transaction, vin):
+    def process_input_p2pk(self, vin):
         if not 'scriptSig' in vin.keys() or len(vin["scriptSig"]["asm"]) < 2: # 2nd statement is to not pass empty strings
             return False
 
@@ -168,11 +172,11 @@ class Parser:
         if not self.correct_ecdsa_key(suspected_key):
             return False
 
-        self.add_key_to_data_dict(transaction, suspected_key, signature, self.ecdsa_data)
+        self.add_key_to_data_dict(suspected_key, signature, self.ecdsa_data)
         return True
 
 
-    def process_output_p2pk(self, transaction, vout):
+    def process_output_p2pk(self, vout):
 
         if not 'scriptPubKey' in vout.keys() or len(vout['scriptPubKey']['asm'].split(" OP_CHECKSIG")) < 2:
             return False
@@ -183,7 +187,7 @@ class Parser:
         if not self.correct_ecdsa_key(suspected_key):
             return False
 
-        self.add_key_to_data_dict(transaction, suspected_key, signature, self.ecdsa_data)
+        self.add_key_to_data_dict(suspected_key, signature, self.ecdsa_data)
         return True
 
 
@@ -191,7 +195,7 @@ class Parser:
     # ScriptSig: Contains signatures. Last entry is the unlocking script that needs to be further parsed to extract public key
     # Locking script: contains a few instructions and hash of script that unlocks the spending
     # returns true if key was extracted
-    def process_input_p2sh(self, transaction, vin):
+    def process_input_p2sh(self, vin):
 
         if not 'scriptSig' in vin.keys() or len(vin['scriptSig']['asm'].split(" ")) < 2:
             return False
@@ -203,7 +207,7 @@ class Parser:
 
         script = temp_stack[-1]
         inputs = temp_stack[:-1]
-        return self.parse_serialized_script(transaction, script, inputs)
+        return self.parse_serialized_script(script, inputs)
 
 
     def extract_signature_p2wpkh(self, vin):
@@ -219,7 +223,7 @@ class Parser:
     # We do not care about scriptPubKey or Sigscript in this case
     # Segwith contains signature and public key
     # returns true if key was extracted
-    def process_input_p2wpkh(self, transaction, vin):
+    def process_input_p2wpkh(self, vin):
 
         if not 'txinwitness' in vin.keys() or len(vin['txinwitness']) < 2:
             return False
@@ -230,21 +234,21 @@ class Parser:
         if not self.correct_ecdsa_key(suspected_key):
             return False
 
-        self.add_key_to_data_dict(transaction, suspected_key, signature, self.ecdsa_data)
+        self.add_key_to_data_dict(suspected_key, signature, self.ecdsa_data)
         return True
 
 
     # This function tries to process a Pay to Witness Script Hash transaction. Those are very new SegWit transactions for Lightning L2 transactions underlaying settlement
     # Segwith contains signature(s) and script
     # returns true if key was extracted
-    def process_input_p2wsh(self, transaction, vin):
+    def process_input_p2wsh(self, vin):
 
         if not 'txinwitness' in vin.keys() or len(vin['txinwitness']) < 2:
             return False
 
         script = vin['txinwitness'][-1]
         inputs = vin['txinwitness'][:-1]
-        return self.parse_serialized_script(transaction, script, inputs)
+        return self.parse_serialized_script(script, inputs)
 
 
     def extract_signature_p2tr(self, vin, i):
@@ -262,7 +266,7 @@ class Parser:
         return signature
 
 
-    def handle_p2tr_keypath(self, transaction, vin):
+    def handle_p2tr_keypath(self, vin):
         signature = self.extract_signature_p2tr(vin, 0)
         vout = self.get_previous_vout(vin)
 
@@ -279,11 +283,11 @@ class Parser:
         if not self.correct_schnorr_key(suspected_key):
             return False
 
-        self.add_key_to_data_dict(transaction, suspected_key, signature, self.schnorr_data)
+        self.add_key_to_data_dict(suspected_key, signature, self.schnorr_data)
         return True
 
 
-    def handle_p2tr_scriptpath(self, transaction, vin):
+    def handle_p2tr_scriptpath(self, vin):
         toreturn = False
         if len(vin['txinwitness']) < 3: # Should contain at least three things: some inputs for a script, the script and a control block.
             return toreturn
@@ -296,18 +300,18 @@ class Parser:
         suspected_key = control_block[:64]
 
         if self.correct_schnorr_key(suspected_key):
-            self.add_key_to_data_dict(transaction, suspected_key, "NaN", self.schnorr_data)
+            self.add_key_to_data_dict(suspected_key, "NaN", self.schnorr_data)
             toreturn = True
 
         script = vin["txinwitness"][-2]
         inputs = vin["txinwitness"][:-2]
-        if self.parse_serialized_script(transaction, script, inputs):
-            print("Successful P2TR [SCRIPT]!!! TXID:", transaction["txid"])
+        if self.parse_serialized_script(script, inputs):
+            print("Successful P2TR [SCRIPT]!!! TXID:", self.state["txid"])
             toreturn = True
 
         return toreturn
 
-    def process_output_p2tr(self, transaction, vout):
+    def process_output_p2tr(self, vout):
 
         if (not "scriptPubKey" in vout.keys()) or (len(vout["scriptPubKey"]["asm"].split(' ')) != 2):
             return False
@@ -320,21 +324,21 @@ class Parser:
         if not self.correct_schnorr_key(suspected_key):
             return False
 
-        self.add_key_to_data_dict(transaction, suspected_key, "NaN", self.schnorr_data)
+        self.add_key_to_data_dict(suspected_key, "NaN", self.schnorr_data)
         return True
 
 
     # Essential to read. From Pieter Wuille, author of P2TR.
     """ https://bitcoin.stackexchange.com/questions/107154/what-is-the-control-block-in-taproot/107159#107159 """
-    def process_input_p2tr(self, transaction, vin):
+    def process_input_p2tr(self, vin):
 
         if not 'txinwitness' in vin.keys() or len(vin['txinwitness']) == 0:
             return False
 
         if len(vin['txinwitness']) == 1 and len(vin['txinwitness'][0]) in self.SCHNORR_SIG_LENGTHS:
-            return self.handle_p2tr_keypath(transaction, vin)
+            return self.handle_p2tr_keypath(vin)
 
-        return self.handle_p2tr_scriptpath(transaction, vin)
+        return self.handle_p2tr_scriptpath(vin)
 
 
     def data_dict_full(self, data_dict):
@@ -364,38 +368,42 @@ class Parser:
 
 
     def process_inputs(self, transaction):
+        self.state["vin/vout"] = "vin"
         for i in range(len(transaction["vin"])):
             vin = transaction["vin"][i]
+            self.state["n"] = i
             self.inputs += 1
             try:
 
                 # Run all extractors in turn, stop on success.
-                if not (self.process_input_p2wpkh(transaction, vin) or \
-                        self.process_input_p2wsh(transaction, vin) or \
-                        self.process_input_p2tr(transaction, vin) or \
-                        self.process_input_p2sh(transaction, vin) or \
-                        self.process_input_p2pkh(transaction, vin) or \
-                        self.process_input_p2pk(transaction, vin) or \
+                if not (self.process_input_p2wpkh(vin) or \
+                        self.process_input_p2wsh(vin) or \
+                        self.process_input_p2tr(vin) or \
+                        self.process_input_p2sh(vin) or \
+                        self.process_input_p2pkh(vin) or \
+                        self.process_input_p2pk(vin) or \
                         ('coinbase' in transaction['vin'][0].keys())): # Coinbase input, so don't count as failed.
 
                     self.failed_inputs += 1
-                    print("Failed transaction input: ", transaction["txid"], ":", i, sep = '')
+                    print("Failed transaction input: ", self.state["txid"], ":", i, sep = '')
 
             except (ValueError, IndexError) as e:
                 self.failed_inputs += 1
-                print("Failed transaction input: ", transaction["txid"], ":", i, sep = '')
+                print("Failed transaction input: ", self.state["txid"], ":", i, sep = '')
 
 
 
     def process_outputs(self, transaction):
+        self.state["vin/vout"] = "vout"
         for i in range(len(transaction["vout"])):
             vout = transaction["vout"][i]
+            self.state["n"] = i
             self.outputs += 1
 
-            if (vout["scriptPubKey"]["type"] == "pubkey" and not self.process_output_p2pk(transaction, vout)) or \
-               (vout["scriptPubKey"]["type"] == "witness_v1_taproot" and not self.process_output_p2tr(transaction, vout)):
+            if (vout["scriptPubKey"]["type"] == "pubkey" and not self.process_output_p2pk(vout)) or \
+               (vout["scriptPubKey"]["type"] == "witness_v1_taproot" and not self.process_output_p2tr(vout)):
                 self.failed_outputs += 1
-                print("Failed transaction output: ", transaction["txid"], ":", i, sep = '')
+                print("Failed transaction output: ", self.state["txid"], ":", i, sep = '')
 
     def process_block(self, n):
         self.blocks += 1
@@ -404,6 +412,7 @@ class Parser:
 
         for transaction_hash in block_transactions:
 
+            self.state["txid"] = transaction_hash
             self.transactions += 1
             transaction = self.rpc.getrawtransaction(transaction_hash, True) # Getting transaction in verbose format
 
@@ -511,7 +520,7 @@ class Parser:
         return ecdsa_keys, ecdsa_sigs, schnorr_keys, schnorr_sigs
 
 
-    def parse_serialized_script(self, transaction, script, inputs):
+    def parse_serialized_script(self, script, inputs):
         stack = self.load_stack(script, inputs)
         temp_tuple = self.length_based_parse(stack)
 
@@ -525,21 +534,21 @@ class Parser:
 
         if len(ecdsa_keys) > 0:
             if len(ecdsa_keys) == 1 and len(ecdsa_sigs) == 1:
-                self.add_key_to_data_dict(transaction, ecdsa_keys[0], ecdsa_sigs[0], self.ecdsa_data)
+                self.add_key_to_data_dict(ecdsa_keys[0], ecdsa_sigs[0], self.ecdsa_data)
             elif len(ecdsa_keys) == 1 and len(ecdsa_sigs) == 0:
-                self.add_key_to_data_dict(transaction, ecdsa_keys[0], "NaN", self.ecdsa_data)
+                self.add_key_to_data_dict(ecdsa_keys[0], "NaN", self.ecdsa_data)
             else:
                 for key in ecdsa_keys:
-                    self.add_key_to_unmatched_data_dict(transaction, key, ecdsa_sigs, self.unmatched_ecdsa_data)
+                    self.add_key_to_unmatched_data_dict(key, ecdsa_sigs, self.unmatched_ecdsa_data)
 
         if len(schnorr_keys) > 0:
             if len(schnorr_keys) == 1 and len(schnorr_sigs) == 1:
-                self.add_key_to_data_dict(transaction, schnorr_keys[0], schnorr_sigs[0], self.schnorr_data)
+                self.add_key_to_data_dict(schnorr_keys[0], schnorr_sigs[0], self.schnorr_data)
             elif len(schnorr_keys) == 1 and len(schnorr_sigs) == 0:
-                self.add_key_to_data_dict(transaction, schnorr_keys[0], "NaN", self.schnorr_data)
+                self.add_key_to_data_dict(schnorr_keys[0], "NaN", self.schnorr_data)
             else:
                 for key in ecdsa_keys:
-                    self.add_key_to_unmatched_data_dict(transaction, key, schnorr_sigs, self.unmatched_schnorr_data)
+                    self.add_key_to_unmatched_data_dict(key, schnorr_sigs, self.unmatched_schnorr_data)
 
         return True
 
