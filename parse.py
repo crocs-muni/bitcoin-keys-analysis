@@ -198,7 +198,6 @@ class Parser:
 
         temp_stack = self.load_stack(vin['scriptSig']['hex'], [])
         temp_stack.reverse() # Later load_stack will be called again from parse_serialized_script(), so "unreverse" now.
-        print(temp_stack)
         if len(temp_stack) < 2:
             return False
 
@@ -527,6 +526,8 @@ class Parser:
         if len(ecdsa_keys) > 0:
             if len(ecdsa_keys) == 1 and len(ecdsa_sigs) == 1:
                 self.add_key_to_data_dict(transaction, ecdsa_keys[0], ecdsa_sigs[0], self.ecdsa_data)
+            elif len(ecdsa_keys) == 1 and len(ecdsa_sigs) == 0:
+                self.add_key_to_data_dict(transaction, ecdsa_keys[0], "NaN", self.ecdsa_data)
             else:
                 for key in ecdsa_keys:
                     self.add_key_to_unmatched_data_dict(transaction, key, ecdsa_sigs, self.unmatched_ecdsa_data)
@@ -534,6 +535,8 @@ class Parser:
         if len(schnorr_keys) > 0:
             if len(schnorr_keys) == 1 and len(schnorr_sigs) == 1:
                 self.add_key_to_data_dict(transaction, schnorr_keys[0], schnorr_sigs[0], self.schnorr_data)
+            elif len(schnorr_keys) == 1 and len(schnorr_sigs) == 0:
+                self.add_key_to_data_dict(transaction, schnorr_keys[0], "NaN", self.schnorr_data)
             else:
                 for key in ecdsa_keys:
                     self.add_key_to_unmatched_data_dict(transaction, key, schnorr_sigs, self.unmatched_schnorr_data)
