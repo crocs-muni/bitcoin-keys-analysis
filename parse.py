@@ -405,19 +405,24 @@ class Parser:
                 self.failed_outputs += 1
                 print("Failed transaction output: ", self.state["txid"], ":", i, sep = '')
 
+
+    def process_transaction(self, txid):
+        transaction = self.rpc.getrawtransaction(txid, True) # Getting transaction in verbose format
+
+        self.state["txid"] = txid
+        self.transactions += 1
+
+        self.process_inputs(transaction)
+        self.process_outputs(transaction)
+        return True
+
     def process_block(self, n):
         self.blocks += 1
         block_hash = self.rpc.getblockhash(n)
         block_transactions = self.rpc.getblock(block_hash)['tx']
 
-        for transaction_hash in block_transactions:
-
-            self.state["txid"] = transaction_hash
-            self.transactions += 1
-            transaction = self.rpc.getrawtransaction(transaction_hash, True) # Getting transaction in verbose format
-
-            self.process_inputs(transaction)
-            self.process_outputs(transaction)
+        for txid in block_transactions:
+            self.process_transaction(txid)
 
 
     # Main functions, takes natural numbers start, end which are the indexes of Bitcoin blocks
