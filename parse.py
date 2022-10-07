@@ -7,7 +7,7 @@ class Parser:
     # change path to bitcoin.conf if you have different data structure
     # raw Proxy takes commands in hexa strings instead of structs, that is what we need
     bitcoin.SelectParams("mainnet")  # we will be using the production blockchain
-    rpc = bitcoin.rpc.RawProxy(btc_conf_file="/home/xyakimo1/crocs/.bitcoin-data/bitcoin.conf")
+    rpc = bitcoin.rpc.RawProxy()
 
     blocks = 0              # Number of blocks, that were passed to the script. Same with transactions, inputs (vin's) and outputs (vout's).
     transactions = 0
@@ -306,7 +306,7 @@ class Parser:
         script = vin["txinwitness"][-2]
         inputs = vin["txinwitness"][:-2]
         if self.parse_serialized_script(script, inputs):
-            print("Successful P2TR [SCRIPT]!!! TXID:", self.state["txid"])
+            #print("Successful P2TR [SCRIPT]!!! TXID:", self.state["txid"])
             toreturn = True
 
         return toreturn
@@ -428,12 +428,15 @@ class Parser:
     # Main functions, takes natural numbers start, end which are the indexes of Bitcoin blocks
     # if start is 0, then the parsing starts at the genesis block
     def process_blocks(self, start, end):
+        start_time = time.perf_counter()
 
         for n in range(start, end):
             self.process_block(n)
             self.flush_if_needed(n, False)
 
         self.flush_if_needed(n, True)
+
+        parser.print_statistics(start_time)
 
 
 
@@ -519,7 +522,7 @@ class Parser:
                 schnorr_sigs.append(item)
                 continue
 
-            print("Unknown stack item:", item)
+            #print("Unknown stack item:", item)
             #return False
 
         return ecdsa_keys, ecdsa_sigs, schnorr_keys, schnorr_sigs
@@ -557,9 +560,10 @@ class Parser:
 
         return True
 
+
+    def show_dict(self, dictionary):
+        print(json.dumps(dictionary, indent = 2))
+
 #Example of use:
 if __name__ == "__main__":
     parser = Parser()
-    start_time = time.perf_counter()
-    parser.process_blocks(739000, 739001)
-    parser.print_statistics(start_time)
