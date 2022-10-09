@@ -1,10 +1,10 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
-<TODO>: README.md + re-comment code where needed.
-------------------------------------------------------------------------------------------------------------------------------
-<TODO2>: Rewrite try-except's.
+<TODO>:  Rewrite try-except's.
          Save unknown stackitems to dictionary.
+         Save statistics of transaction types.
+         Should we remove "hash_type" byte in Schnorr's signatures?
 ------------------------------------------------------------------------------------------------------------------------------
 NOTE: Tailor for multi-thread meta-center parsing.
 ------------------------------------------------------------------------------------------------------------------------------
