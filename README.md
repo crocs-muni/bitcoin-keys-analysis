@@ -13,11 +13,13 @@ A set of tools for extraction and analysis of Bitcoin ECDSA and Schnorr keys.
 ### [parse.py](parse.py)
 ##### Parser.process_transaction(self, txid: str)
 
-``` plaintext
-[xyakimo1@portege ~/crocs]  python3 -i parse.py
+``` python
+$ python3 -i parse.py
 >>> parser.process_transaction("37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8")
 True
 >>> parser.show_dict(parser.schnorr_data)
+```
+``` JSON
 {
   "5f4237bd7dae576b34abc8a9c6fa4f0e4787c04234ca963e9e96c8f9b67b56d1": [
     {
@@ -44,16 +46,19 @@ True
 ```
 #### Parser.process_blocks(self, start: int, end: int)
 
-``` plaintext
-[xyakimo1@portege ~/crocs]  python3 -i parse.py
+``` python
+$ python3 -i parse.py
 >>> parser.process_blocks(739000, 739001)
 
 ==================================================================================================================================================
 Gathered  4867  keys:  4839  ECDSA keys,  28  Schnorr Signature keys; in  5.632800183999279  seconds.
 Failed to parse  0  inputs ( 0.00 %) and  0  outputs ( 0.00 %).
 ==================================================================================================================================================
->>> 
-[xyakimo1@portege ~/crocs]  head gathered-data/ecdsa_data_739000.txt
+```
+``` bash
+$ head gathered-data/ecdsa_data_739000.txt
+```
+``` JSON
 {
   "02018eb32174d67f3d247101d2ee3f9558dff7a5ea035ce9440f2dbb4b455ec5e9": [
     {
@@ -64,7 +69,11 @@ Failed to parse  0  inputs ( 0.00 %) and  0  outputs ( 0.00 %).
   ],
   "03e77710452b490c0e0bddbe1aa06d4f373bfceb1c7fb4797430739ec965a49faf": [
     {
-[xyakimo1@portege ~/crocs]  head gathered-data/unmatched_ecdsa_data_739000.txt
+```
+``` bash
+$ head gathered-data/unmatched_ecdsa_data_739000.txt
+```
+``` JSON
 {
   "0375e00eb72e29da82b89367947f29ef34afb75e8654f6ea368e0acdfd92976b7c": [
     {
@@ -75,7 +84,11 @@ Failed to parse  0  inputs ( 0.00 %) and  0  outputs ( 0.00 %).
         "30440220785586b83592e6f4766b487bcf784804c0cbf3186e668827f52f47c662df95510220254876aa0bf800275e78720cdd6e06b9ca9d444a29cf69959d97798556878c0801"
       ]
     },
-[xyakimo1@portege ~/crocs]  head gathered-data/schnorr_data_739000.txt
+```
+``` bash 
+$ head gathered-data/schnorr_data_739000.txt
+```
+``` JSON
 {
   "188d3a331f7683314047e5159b7d43df12d692ae957841d1d23c13a31732504d": [
     {
