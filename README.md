@@ -130,7 +130,7 @@ To use the extraction part of our project ([parse.py](parse.py)) a one must down
    `echo "rpcpassword=password" >> bitcoin.conf`
 
 
-4. Run a Bitcoin Core daemon.
+5. Run a Bitcoin Core daemon.
     Now there are some options in what way you get Bitcoin blocks:
   
     1. Run `bitcoind -daemon` command. This will start [Initial Block Download](https://bitcoin.org/en/full-node#initial-block-downloadibd) process and the daemon will continuously download blocks. The downloading will carry on while daemon runs (use `bitcoin-cli stop` to stop it) and while it has access to the internet. This is the way Bitcoin Core developers expect you to get blocks, but be careful, because you might run out of disk space really quick or use more network traffic that you'd want to. To avoid this take a look at the second option.
@@ -151,7 +151,16 @@ To use the extraction part of our project ([parse.py](parse.py)) a one must down
 
     3. As a third option, you might also normally run `bitcoind` (with no `-daemon` to see progress) and when enough blocks will be downloaded stop it and then re-run it without internet access.
 
-5. You are ready to use `parse.py`!
+6. **Check-list**:
+
+    - python3
+    - python-bitcoinlib (installed python3 module)
+    - Bitcoin Core Daemon (you are able to run `bitcoind` in terminal)
+    - Some amount of blocks downloaded (in `~/.bitcoin` directry) 
+    - Enabled RPC server (corresponding `~/.bitcoin/bitcoin.conf` file)
+    - Completed instructions from `./enable_no-internet.sh` (optional, but strongly recommended)
+
+7. You are ready to use `parse.py`!
 
 ## For Developers
 To run tests a one will need to install [pytest](https://docs.pytest.org/en/7.1.x/getting-started.html) python3 module.
