@@ -173,7 +173,7 @@ To use the extraction part of our project ([parse.py](parse.py)) a one must down
     - Enabled RPC server (corresponding `~/.bitcoin/bitcoin.conf` file)
     - Completed instructions from `./enable_no-internet.sh` (optional, but strongly recommended)
 
-7. You are ready to use `parse.py`!
+7. You are ready to go! Try `./parse.py demo`.
 
 ## For Developers
 To run tests a one will need to install [pytest](https://docs.pytest.org/en/7.1.x/getting-started.html) python3 module.
