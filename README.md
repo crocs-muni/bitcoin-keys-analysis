@@ -171,9 +171,9 @@ To use the extraction part of our project ([parse.py](parse.py)) a one must down
     - Bitcoin Core Daemon (you are able to run `bitcoind` in terminal)
     - Some amount of blocks downloaded (in `~/.bitcoin` directry) 
     - Enabled RPC server (corresponding `~/.bitcoin/bitcoin.conf` file)
-    - Completed instructions from `./enable_no-internet.sh` (optional, but strongly recommended)
+    - Completed instructions from [block_internet.md](block_internet.md) (optional, but strongly recommended)
 
-7. You are ready to go! Try `./parse.py demo`.
+7. You are ready to go! Try to run `./parse.py demo` in the project directory.
 
 ## For Developers
 To run tests a one will need to install [pytest](https://docs.pytest.org/en/7.1.x/getting-started.html) python3 module.
