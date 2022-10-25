@@ -10,7 +10,7 @@ A set of tools for extraction and analysis of Bitcoin ECDSA and Schnorr keys.
 3. [For Developers](#for-developers)
 ## Basic Usage Demonstration
 
-### [parse.py](parse.py)
+### [parse.py](src/parse.py)
 ##### Parser.process_transaction(self, txid: str)
 
 ``` python
@@ -100,7 +100,7 @@ $ head gathered-data/schnorr_data_739000.txt
   "6ea0037df9f8708723834c93b9f0b1cc558be0e394aa22be9e841ae8e871f890": [
     {
 ```
-If you feel interested at this point, look through [parse.py](parse.py) file to see, what other functions are there.
+If you feel interested at this point, look through [parse.py](src/parse.py) file to see, what other functions are there.
 
 ## Getting Started
 ### Prerequisites
@@ -114,7 +114,7 @@ If you feel interested at this point, look through [parse.py](parse.py) file to 
   `pip3 install python-bitcoinlib`
 
 ### Info about the blockchain
-To use the extraction part of our project ([parse.py](parse.py)) a one must download corresponding part of the Bitcoin blockchain. If you want to give a quick try, you can download only first ~100 blocks really quick and this won't take a lot of disk space. However, if you want to parse the whole blockchain, you'll need about 430GB (as for 09.2022) of free space, the process takes 2-5 days of time. The downloading automatically starts, when you launch `bitcoind` daemon. To stop the downloading (and verification) of the blockchain, stop the daemon (`bitcoin-cli stop`) or block it's access to the internet. Because Bitcoin Core is a [full-node](https://bitcoin.org/en/full-node#what-is-a-full-node) Bitcoin client, it downloads the blockchain from the genesis block. Meaning that if a one wants to parse only the last block, they still have to download and validate the whole blockchain. However, in that case a one can delete unnecessary parts of the blockchain after the validation or use ["pruned mode"](https://bitcoin.org/en/full-node#reduce-storage) during the download.
+To use the extraction part of our project ([parse.py](src/parse.py)) a one must download corresponding part of the Bitcoin blockchain. If you want to give a quick try, you can download only first ~100 blocks really quick and this won't take a lot of disk space. However, if you want to parse the whole blockchain, you'll need about 430GB (as for 09.2022) of free space, the process takes 2-5 days of time. The downloading automatically starts, when you launch `bitcoind` daemon. To stop the downloading (and verification) of the blockchain, stop the daemon (`bitcoin-cli stop`) or block it's access to the internet. Because Bitcoin Core is a [full-node](https://bitcoin.org/en/full-node#what-is-a-full-node) Bitcoin client, it downloads the blockchain from the genesis block. Meaning that if a one wants to parse only the last block, they still have to download and validate the whole blockchain. However, in that case a one can delete unnecessary parts of the blockchain after the validation or use ["pruned mode"](https://bitcoin.org/en/full-node#reduce-storage) during the download.
 
 ### Actually starting
 1. Install the [prerequisites](#prerequisites)
@@ -124,7 +124,7 @@ To use the extraction part of our project ([parse.py](parse.py)) a one must down
     
     `cd bitcoin-keys-analysis/`
 
-3. Do the instructions from [block_internet.md](block_internet.md) to be able to block Bitcoin Core's access to the internet, when you need to.
+3. Do the instructions from [block_internet.md](other/block_internet.md) to be able to block Bitcoin Core's access to the internet, when you need to.
 
 4. Enable RPC server in bitcoin.conf:
 
@@ -150,17 +150,17 @@ To use the extraction part of our project ([parse.py](parse.py)) a one must down
 
     2. Use "pre-downloaded" blocks from us:
 
-        `unzip bitcoin.zip`
+        `unzip examples/bitcoin_blocks.zip`
         
         `mv .bitcoin ~`
     
         And after that run Bitcoin Core without internet access.
     
-        `./enable_no-internet.sh`
+        `./other/enable_no-internet.sh`
 
         `no-internet "bitcoind -daemon"`
 
-        Now you are able to try some basic functionality of [parse.py](parse.py) without dowloading much stuff. This option is good for those, who just want to give a quick try of your project, but is not really suitable for those, who want to analyse the whole blockchain / who really care about data authentity.
+        Now you are able to try some basic functionality of [parse.py](src/parse.py) without dowloading much stuff. This option is good for those, who just want to give a quick try of your project, but is not really suitable for those, who want to analyse the whole blockchain / who really care about data authentity.
 
     3. As a third option, you might also normally run `bitcoind` (with no `-daemon` to see progress) and when enough blocks will be downloaded stop it and then re-run it without internet access.
 
@@ -171,7 +171,7 @@ To use the extraction part of our project ([parse.py](parse.py)) a one must down
     - Bitcoin Core Daemon (you are able to run `bitcoind` in terminal)
     - Some amount of blocks downloaded (in `~/.bitcoin` directry) 
     - Enabled RPC server (corresponding `~/.bitcoin/bitcoin.conf` file)
-    - Completed instructions from [block_internet.md](block_internet.md) (optional, but strongly recommended)
+    - Completed instructions from [block_internet.md](other/block_internet.md) (optional, but strongly recommended)
 
 7. You are ready to go! Try to run `./parse.py demo` in the project directory.
 
