@@ -1,6 +1,6 @@
 #!/bin/python3
 import sys
-sys.path.append("/home/xyakimo1/crocs/")
+sys.path.append("/home/xyakimo1/crocs/src") # add here path to the project's source directory
 from parse import Parser
 import pytest
 
