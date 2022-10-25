@@ -19,8 +19,12 @@ gathered-data/
 !*.md
 !*.MD
 
-# Unignore tests dir
+# Unignore dirs
+
 !tests/
+!src/
+!examples/
+!other/
 
 # Ignore __init__.py
 __init__.py
