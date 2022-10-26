@@ -173,7 +173,7 @@ To use the extraction part of our project ([parse.py](src/parse.py)) a one must 
     - Enabled RPC server (corresponding `~/.bitcoin/bitcoin.conf` file)
     - Completed instructions from [block_internet.md](other/block_internet.md) (optional, but strongly recommended)
 
-7. You are ready to go! Try to run `./parse.py demo` in the project directory.
+7. You are ready to go! Try to run `./demo.py` in the project's src directory.
 
 ## For Developers
 To run tests a one will need to install [pytest](https://docs.pytest.org/en/7.1.x/getting-started.html) python3 module.
