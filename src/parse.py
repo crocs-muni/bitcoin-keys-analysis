@@ -56,6 +56,9 @@ class Parser:
     def show_dict(self, dictionary):
         print(json.dumps(dictionary, indent = 2))
 
+    def print_speed(self, start_time):
+        print("Speed: {:0.2f} keys/sec".format(self.keys/(time.perf_counter() - start_time)))
+
 
     """
         Different "Helping" functions.
@@ -163,7 +166,7 @@ class Parser:
     def flush_if_needed(self, n, exception):
         for dict_tup in self.DICTS: 
             if self.data_dict_full(dict_tup[0]) or (exception and dict_tup[0] != {}):
-                file_name = "gathered-data/" + dict_tup[1] + "_" + str(n) + ".txt"
+                file_name = "../gathered-data/" + dict_tup[1] + "_" + str(n) + ".txt"
                 self.flush_data_dict(file_name, dict_tup[0])
 
 
@@ -574,6 +577,9 @@ class Parser:
         for n in range(start, end):
             self.process_block(n)
             self.flush_if_needed(n, False)
+
+            if n % 10 == 0:
+                self.print_speed(start_time)
 
         self.flush_if_needed(n, True)
 
