@@ -1,10 +1,18 @@
 #!/bin/python3
 import sys
 sys.path.append("/home/xyakimo1/crocs/src") # add here path to the project's source directory
+
+from parse import RPC
+from parse import Statistics
+from parse import Data_storage
 from parse import Parser
+
 import pytest
 
-parser = Parser()
+rpc = RPC()
+statistics = Statistics()
+storage = Data_storage()
+parser = Parser(rpc, statistics, storage)
 
 def set_state(parser: Parser, txid, vin_vout, n):
     parser.state["txid"] = txid
@@ -42,9 +50,9 @@ def test_correct_schnorr_key(suspected_key: str, expected_result: bool):
                           ("159914d19974d9d2c8e658ff822f09e5f0e8a439ca5b4490d39df13f71843350", 1, 1, 2)])
 def test_increment_key_count(suspected_key: str, expected_ecdsa: int, expected_schnorr: int, expected_keys: int):
     parser.increment_key_count(suspected_key)
-    assert parser.ecdsa == expected_ecdsa
-    assert parser.schnorr == expected_schnorr
-    assert parser.keys == expected_keys
+    assert parser.statistics.ecdsa == expected_ecdsa
+    assert parser.statistics.schnorr == expected_schnorr
+    assert parser.statistics.keys == expected_keys
 
 #def test_add_key_to_data_dict(suspected_key, signature, data_dict, expected_dict):
     # TODO
@@ -100,13 +108,13 @@ def test_extract_signature_p2tr(txid: str, vin_n: int, i: int, expected_signatur
     ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, False, {})
                                                          ])
 def test_process_input_p2pkh(txid: str, vin_n: int, expected_result: bool, expected_dict: dict):
-    parser.ecdsa_data = {}
+    parser.storage.ecdsa_data = {}
     transaction = parser.rpc.getrawtransaction(txid, True)
     vin = transaction["vin"][vin_n]
     set_state(parser, txid, "vin", vin_n)
 
     assert parser.process_input_p2pkh(vin) == expected_result
-    assert parser.ecdsa_data == expected_dict
+    assert parser.storage.ecdsa_data == expected_dict
 
 
 @pytest.mark.parametrize("txid, vin_n, expected_result, expected_dict", [
@@ -126,13 +134,13 @@ def test_process_input_p2pkh(txid: str, vin_n: int, expected_result: bool, expec
     ("c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a", 2, False, {})
                                                          ])
 def test_process_input_p2pk(txid: str, vin_n: int, expected_result: bool, expected_dict: dict):
-    parser.ecdsa_data = {}
+    parser.storage.ecdsa_data = {}
     transaction = parser.rpc.getrawtransaction(txid, True)
     vin = transaction["vin"][vin_n]
     set_state(parser, txid, "vin", vin_n)
 
     assert parser.process_input_p2pk(vin) == expected_result
-    assert parser.ecdsa_data == expected_dict
+    assert parser.storage.ecdsa_data == expected_dict
 
 
 @pytest.mark.parametrize("txid, vout_n, expected_result, expected_dict", [
@@ -152,13 +160,13 @@ def test_process_input_p2pk(txid: str, vin_n: int, expected_result: bool, expect
     ("e700b7b330e4b56c5883d760f9cbe4fa47e0f62b350e108f1767bc07a4bbc07b", 0, False, {})
                                                          ])
 def test_process_output_p2pk(txid: str, vout_n: int, expected_result: bool, expected_dict: dict):
-    parser.ecdsa_data = {}
+    parser.storage.ecdsa_data = {}
     transaction = parser.rpc.getrawtransaction(txid, True)
     vout = transaction["vout"][vout_n]
     set_state(parser, txid, "vout", vout_n)
 
     assert parser.process_output_p2pk(vout) == expected_result
-    assert parser.ecdsa_data == expected_dict
+    assert parser.storage.ecdsa_data == expected_dict
 
 
 @pytest.mark.parametrize("txid, vin_n, expected_result, expected_dict", [
@@ -202,13 +210,13 @@ def test_process_output_p2pk(txid: str, vout_n: int, expected_result: bool, expe
     ("ce6fb9e782df2f5dbd4190069c3ec31ccf1ea2429b890da3c2b12ef37037a5be", 0, False, {})
                                                          ])
 def test_process_input_p2sh(txid: str, vin_n: int, expected_result: bool, expected_dict: dict):
-    parser.unmatched_ecdsa_data = {}
+    parser.storage.unmatched_ecdsa_data = {}
     transaction = parser.rpc.getrawtransaction(txid, True)
     vin = transaction["vin"][vin_n]
     set_state(parser, txid, "vin", vin_n)
 
     assert parser.process_input_p2sh(vin) == expected_result
-    assert parser.unmatched_ecdsa_data == expected_dict
+    assert parser.storage.unmatched_ecdsa_data == expected_dict
 
 
 @pytest.mark.parametrize("txid, vin_n, expected_result, expected_dict", [
@@ -227,13 +235,13 @@ def test_process_input_p2sh(txid: str, vin_n: int, expected_result: bool, expect
     ("00e07f279dd05b9b68c40f21b43c57847e75c35cd3bbc2d80921eb037ef0c9a8", 0, False, {})
                                                          ])
 def test_process_input_p2wpkh(txid: str, vin_n: int, expected_result: bool, expected_dict: dict):
-    parser.ecdsa_data = {}
+    parser.storage.ecdsa_data = {}
     transaction = parser.rpc.getrawtransaction(txid, True)
     vin = transaction["vin"][vin_n]
     set_state(parser, txid, "vin", vin_n)
 
     assert parser.process_input_p2wpkh(vin) == expected_result
-    assert parser.ecdsa_data == expected_dict
+    assert parser.storage.ecdsa_data == expected_dict
 
 
 @pytest.mark.parametrize("txid, vin_n, expected_result, expected_dict", [
@@ -277,13 +285,13 @@ def test_process_input_p2wpkh(txid: str, vin_n: int, expected_result: bool, expe
     ("37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8", 1, False, {})
                                                          ])
 def test_process_input_p2wsh(txid: str, vin_n: int, expected_result: bool, expected_dict: dict):
-    parser.unmatched_ecdsa_data = {}
+    parser.storage.unmatched_ecdsa_data = {}
     transaction = parser.rpc.getrawtransaction(txid, True)
     vin = transaction["vin"][vin_n]
     set_state(parser, txid, "vin", vin_n)
 
     assert parser.process_input_p2wsh(vin) == expected_result
-    assert parser.unmatched_ecdsa_data == expected_dict
+    assert parser.storage.unmatched_ecdsa_data == expected_dict
 
 
 @pytest.mark.parametrize("txid, vin_n, expected_result, expected_dict", [
@@ -302,13 +310,13 @@ def test_process_input_p2wsh(txid: str, vin_n: int, expected_result: bool, expec
     ("ad511d71762f4123df227e2e048672c4df8cc2ac056ee37f52ff33085b2a2c47", 0, False, {})
                                                          ])
 def test_process_input_p2tr_keypath(txid: str, vin_n: int, expected_result: bool, expected_dict: dict):
-    parser.schnorr_data = {}
+    parser.storage.schnorr_data = {}
     transaction = parser.rpc.getrawtransaction(txid, True)
     vin = transaction["vin"][vin_n]
     set_state(parser, txid, "vin", vin_n)
 
     assert parser.process_input_p2tr(vin) == expected_result
-    assert parser.schnorr_data == expected_dict
+    assert parser.storage.schnorr_data == expected_dict
 
 
 @pytest.mark.parametrize("txid, vin_n, expected_result, expected_dict", [
@@ -335,13 +343,13 @@ def test_process_input_p2tr_keypath(txid: str, vin_n: int, expected_result: bool
     ("ad511d71762f4123df227e2e048672c4df8cc2ac056ee37f52ff33085b2a2c47", 0, False, {})
                                                                         ])
 def test_process_input_p2tr_scriptpath(txid: str, vin_n: int, expected_result: bool, expected_dict: dict):
-    parser.schnorr_data = {}
+    parser.storage.schnorr_data = {}
     transaction = parser.rpc.getrawtransaction(txid, True)
     vin = transaction["vin"][vin_n]
     set_state(parser, txid, "vin", vin_n)
 
     assert parser.process_input_p2tr(vin) == expected_result
-    assert parser.schnorr_data == expected_dict
+    assert parser.storage.schnorr_data == expected_dict
 
 
 @pytest.mark.parametrize("txid, vout_n, expected_result, expected_dict", [
@@ -361,13 +369,13 @@ def test_process_input_p2tr_scriptpath(txid: str, vin_n: int, expected_result: b
     ("ad511d71762f4123df227e2e048672c4df8cc2ac056ee37f52ff33085b2a2c47", 0, False, {})
                                                          ])
 def test_process_output_p2tr(txid: str, vout_n: int, expected_result: bool, expected_dict: dict):
-    parser.schnorr_data = {}
+    parser.storage.schnorr_data = {}
     transaction = parser.rpc.getrawtransaction(txid, True)
     vout = transaction["vout"][vout_n]
     set_state(parser, txid, "vout", vout_n)
 
     assert parser.process_output_p2tr(vout) == expected_result
-    assert parser.schnorr_data == expected_dict
+    assert parser.storage.schnorr_data == expected_dict
 
 
 @pytest.mark.parametrize("script, inputs, expected_stack", [
@@ -599,14 +607,14 @@ def test_length_based_parse(stack: list, expected_tuple: tuple):
     )
                              ])
 def test_parse_serialized_script(txid: str, vin_n: int, script: str, inputs: list, expected_result: bool, expected_tuple: tuple):
-    parser.ecdsa_data = {}
-    parser.unmatched_ecdsa_data = {}
-    parser.schnorr_data = {}
-    parser.unmatched_schnorr_data = {}
+    parser.storage.ecdsa_data = {}
+    parser.storage.unmatched_ecdsa_data = {}
+    parser.storage.schnorr_data = {}
+    parser.storage.unmatched_schnorr_data = {}
     set_state(parser, txid, "vin", vin_n)
 
     assert parser.parse_serialized_script(script, inputs) == expected_result
-    assert (parser.ecdsa_data, parser.unmatched_ecdsa_data, parser.schnorr_data, parser.unmatched_schnorr_data) == expected_tuple
+    assert (parser.storage.ecdsa_data, parser.storage.unmatched_ecdsa_data, parser.storage.schnorr_data, parser.storage.unmatched_schnorr_data) == expected_tuple
 
 
 @pytest.mark.parametrize("fake_tx, expected_failed_inputs, expected_failed_outputs", [
@@ -656,5 +664,5 @@ def test_failed_dict(fake_tx: dict, expected_failed_inputs: list, expected_faile
     parser.process_inputs(fake_tx)
     parser.process_outputs(fake_tx)
 
-    assert parser.failed_inputs_list == expected_failed_inputs
-    assert parser.failed_outputs_list == expected_failed_outputs
+    assert parser.storage.failed_inputs_list == expected_failed_inputs
+    assert parser.storage.failed_outputs_list == expected_failed_outputs

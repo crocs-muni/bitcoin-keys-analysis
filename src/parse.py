@@ -4,10 +4,11 @@ import bitcoin.rpc, json    # basic functionality
 import sys                  # argv
 import time, os             # Parser.print_statistics()
 
-class Parser:
-
+class RPC:
     bitcoin.SelectParams("mainnet")
-    rpc = bitcoin.rpc.RawProxy() # RawProxy takes commands in hexa strings instead of structs, that is what we need
+    raw_proxy = bitcoin.rpc.RawProxy() # RawProxy takes commands in hexa strings instead of structs, that is what we need
+
+class Statistics:
 
     blocks = 0              # Number of blocks, that were passed to the script. Same with transactions, inputs (vin's) and outputs (vout's).
     transactions = 0
@@ -20,8 +21,8 @@ class Parser:
     schnorr = 0
     keys = 0
 
-    import op_codes
-    OP_CODES = op_codes.OP_CODES
+
+class Data_storage:
 
     ecdsa_data = {}
     unmatched_ecdsa_data = {}
@@ -34,6 +35,19 @@ class Parser:
     DICTS = [(ecdsa_data, "ecdsa_data"), (unmatched_ecdsa_data, "unmatched_ecdsa_data"),\
              (schnorr_data, "schnorr_data"), (unmatched_schnorr_data, "unmatched_schnorr_data")]
 
+
+class Parser:
+
+    def __init__(self, rpc: object, statistics: object, storage: object):
+        self.rpc = rpc.raw_proxy
+        self.statistics = statistics
+        self.storage = storage
+
+    state = {"txid": "", "vin/vout": "", "n": -1} # Holds info about what is currently being parsed.
+
+    import op_codes
+    OP_CODES = op_codes.OP_CODES
+
     ECDSA_SIG_LENGTHS = (146, 144, 142, 140, 138)   # Lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
     ECDSA_PUBKEY_LENGTHS = (66, 130)
 
@@ -42,7 +56,6 @@ class Parser:
     SCHNORR_SIG_LENGTHS = (128, 130)
     SCHNORR_PUBKEY_LENGTH = 64
 
-    state = {"txid": "", "vin/vout": "", "n": -1} # Holds info about what is currently being parsed.
 
     """
         "Print" functions
@@ -50,17 +63,17 @@ class Parser:
 
     def print_statistics(self, start_time):
         print("\n", "=" * os.get_terminal_size().columns, sep = '')
-        print ("Gathered ", self.keys, " keys: ", self.ecdsa, " ECDSA keys, ", \
-                self.schnorr," Schnorr Signature keys; in ", time.perf_counter() - start_time, " seconds.")
-        print("Failed to parse ", self.failed_inputs, " inputs ( {:0.2f}".format(self.failed_inputs/self.inputs*100),\
-               "%) and ", self.failed_outputs, " outputs ( {:0.2f}".format(self.failed_outputs/self.outputs*100), "%).")
+        print ("Gathered ", self.statistics.keys, " keys: ", self.statistics.ecdsa, " ECDSA keys, ", \
+                self.statistics.schnorr," Schnorr Signature keys; in ", time.perf_counter() - start_time, " seconds.")
+        print("Failed to parse ", self.statistics.failed_inputs, " inputs ( {:0.2f}".format(self.statistics.failed_inputs/self.statistics.inputs*100),\
+               "%) and ", self.statistics.failed_outputs, " outputs ( {:0.2f}".format(self.statistics.failed_outputs/self.statistics.outputs*100), "%).")
         print("=" * os.get_terminal_size().columns)
 
     def show_dict(self, dictionary):
         print(json.dumps(dictionary, indent = 2))
 
     def print_speed(self, start_time):
-        print("Speed: {:0.2f} keys/sec".format(self.keys/(time.perf_counter() - start_time)))
+        print("Speed: {:0.2f} keys/sec".format(self.statistics.keys/(time.perf_counter() - start_time)))
 
 
     """
@@ -77,10 +90,10 @@ class Parser:
 
     def increment_key_count(self, suspected_key):
         if len(suspected_key) in self.ECDSA_PUBKEY_LENGTHS:
-            self.ecdsa += 1
+            self.statistics.ecdsa += 1
         if len(suspected_key) == self.SCHNORR_PUBKEY_LENGTH:
-            self.schnorr += 1
-        self.keys += 1
+            self.statistics.schnorr += 1
+        self.statistics.keys += 1
 
 
     """
@@ -167,7 +180,7 @@ class Parser:
     # This functions goes trough all data dictionaries and checks, whether they need to be flushed.
     # Argument <exception> is a bool value to force flushing: for example, at the very end of the script.
     def flush_if_needed(self, n, exception):
-        for dict_tup in self.DICTS: 
+        for dict_tup in self.storage.DICTS:
             if self.data_dict_full(dict_tup[0]) or (exception and dict_tup[0] != {}):
                 file_name = "../gathered-data/" + dict_tup[1] + "_" + str(n) + ".txt"
                 self.flush_data_dict(file_name, dict_tup[0])
@@ -321,21 +334,21 @@ class Parser:
 
         if len(ecdsa_keys) > 0:
             if len(ecdsa_keys) == 1 and len(ecdsa_sigs) == 1:
-                self.add_key_to_data_dict(ecdsa_keys[0], ecdsa_sigs[0], self.ecdsa_data)
+                self.add_key_to_data_dict(ecdsa_keys[0], ecdsa_sigs[0], self.storage.ecdsa_data)
             elif len(ecdsa_keys) == 1 and len(ecdsa_sigs) == 0:
-                self.add_key_to_data_dict(ecdsa_keys[0], "NaN", self.ecdsa_data)
+                self.add_key_to_data_dict(ecdsa_keys[0], "NaN", self.storage.ecdsa_data)
             else:
                 for key in ecdsa_keys:
-                    self.add_key_to_unmatched_data_dict(key, ecdsa_sigs, self.unmatched_ecdsa_data)
+                    self.add_key_to_unmatched_data_dict(key, ecdsa_sigs, self.storage.unmatched_ecdsa_data)
 
         if len(schnorr_keys) > 0:
             if len(schnorr_keys) == 1 and len(schnorr_sigs) == 1:
-                self.add_key_to_data_dict(schnorr_keys[0], schnorr_sigs[0], self.schnorr_data)
+                self.add_key_to_data_dict(schnorr_keys[0], schnorr_sigs[0], self.storage.schnorr_data)
             elif len(schnorr_keys) == 1 and len(schnorr_sigs) == 0:
-                self.add_key_to_data_dict(schnorr_keys[0], "NaN", self.schnorr_data)
+                self.add_key_to_data_dict(schnorr_keys[0], "NaN", self.storage.schnorr_data)
             else:
                 for key in ecdsa_keys:
-                    self.add_key_to_unmatched_data_dict(key, schnorr_sigs, self.unmatched_schnorr_data)
+                    self.add_key_to_unmatched_data_dict(key, schnorr_sigs, self.storage.unmatched_schnorr_data)
 
         return True
 
@@ -359,7 +372,7 @@ class Parser:
         if not self.correct_ecdsa_key(suspected_key):
             return False
 
-        self.add_key_to_data_dict(suspected_key, signature, self.ecdsa_data)
+        self.add_key_to_data_dict(suspected_key, signature, self.storage.ecdsa_data)
         return True
 
 
@@ -374,7 +387,7 @@ class Parser:
 
         signature = self.extract_signature_p2pk_p2pkh(vin)
 
-        self.add_key_to_data_dict(suspected_key, signature, self.ecdsa_data)
+        self.add_key_to_data_dict(suspected_key, signature, self.storage.ecdsa_data)
         return True
 
 
@@ -404,7 +417,7 @@ class Parser:
         if not self.correct_ecdsa_key(suspected_key):
             return False
 
-        self.add_key_to_data_dict(suspected_key, signature, self.ecdsa_data)
+        self.add_key_to_data_dict(suspected_key, signature, self.storage.ecdsa_data)
         return True
 
 
@@ -448,7 +461,7 @@ class Parser:
         if not self.correct_schnorr_key(suspected_key):
             return False
 
-        self.add_key_to_data_dict(suspected_key, signature, self.schnorr_data)
+        self.add_key_to_data_dict(suspected_key, signature, self.storage.schnorr_data)
         return True
 
 
@@ -465,7 +478,7 @@ class Parser:
         suspected_key = control_block[:64]
 
         if self.correct_schnorr_key(suspected_key):
-            self.add_key_to_data_dict(suspected_key, "NaN", self.schnorr_data)
+            self.add_key_to_data_dict(suspected_key, "NaN", self.storage.schnorr_data)
             toreturn = True
 
         script = vin["txinwitness"][-2]
@@ -491,7 +504,7 @@ class Parser:
         if not self.correct_ecdsa_key(suspected_key):
             return False
 
-        self.add_key_to_data_dict(suspected_key, signature, self.ecdsa_data)
+        self.add_key_to_data_dict(suspected_key, signature, self.storage.ecdsa_data)
         return True
 
 
@@ -508,7 +521,7 @@ class Parser:
         if not self.correct_schnorr_key(suspected_key):
             return False
 
-        self.add_key_to_data_dict(suspected_key, "NaN", self.schnorr_data)
+        self.add_key_to_data_dict(suspected_key, "NaN", self.storage.schnorr_data)
         return True
 
 
@@ -520,7 +533,7 @@ class Parser:
         transaction = self.rpc.getrawtransaction(txid, True) # Getting transaction in verbose format
 
         self.state["txid"] = txid
-        self.transactions += 1
+        self.statistics.transactions += 1
 
         self.process_inputs(transaction)
         self.process_outputs(transaction)
@@ -532,7 +545,7 @@ class Parser:
         for i in range(len(transaction["vin"])):
             vin = transaction["vin"][i]
             self.state["n"] = i
-            self.inputs += 1
+            self.statistics.inputs += 1
             try:
 
                 # Run all extractors in turn, stop on success.
@@ -544,12 +557,12 @@ class Parser:
                         self.process_input_p2pk(vin) or \
                         ('coinbase' in transaction['vin'][0].keys())): # Coinbase input, so don't count as failed.
 
-                    self.failed_inputs += 1
-                    self.failed_inputs_list.append(self.state["txid"] + ':' + str(self.state["n"]))
+                    self.statistics.failed_inputs += 1
+                    self.storage.failed_inputs_list.append(self.state["txid"] + ':' + str(self.state["n"]))
 
             except (ValueError, IndexError) as e:
-                self.failed_inputs += 1
-                self.failed_inputs_list.append(self.state["txid"] + ':' + str(self.state["n"]))
+                self.statistics.failed_inputs += 1
+                self.storage.failed_inputs_list.append(self.state["txid"] + ':' + str(self.state["n"]))
 
 
     def process_outputs(self, transaction):
@@ -557,16 +570,16 @@ class Parser:
         for i in range(len(transaction["vout"])):
             vout = transaction["vout"][i]
             self.state["n"] = i
-            self.outputs += 1
+            self.statistics.outputs += 1
 
             if (vout["scriptPubKey"]["type"] == "pubkey" and not self.process_output_p2pk(vout)) or \
                (vout["scriptPubKey"]["type"] == "witness_v1_taproot" and not self.process_output_p2tr(vout)):
-                self.failed_outputs += 1
-                self.failed_outputs_list.append(self.state["txid"] + ':' + str(self.state["n"]))
+                self.statistics.failed_outputs += 1
+                self.storage.failed_outputs_list.append(self.state["txid"] + ':' + str(self.state["n"]))
 
 
     def process_block(self, n):
-        self.blocks += 1
+        self.statistics.blocks += 1
         block_hash = self.rpc.getblockhash(n)
         block_transactions = self.rpc.getblock(block_hash)['tx']
 
@@ -590,4 +603,7 @@ class Parser:
 
 
 if __name__ == "__main__":
-    parser = Parser()
+    rpc = RPC()
+    statistics = Statistics()
+    storage = Data_storage()
+    parser = Parser(rpc, statistics, storage)
