@@ -28,6 +28,9 @@ class Parser:
     schnorr_data = {}
     unmatched_schnorr_data = {}
 
+    failed_inputs_list = []
+    failed_outputs_list = []
+
     DICTS = [(ecdsa_data, "ecdsa_data"), (unmatched_ecdsa_data, "unmatched_ecdsa_data"),\
              (schnorr_data, "schnorr_data"), (unmatched_schnorr_data, "unmatched_schnorr_data")]
 
@@ -542,11 +545,11 @@ class Parser:
                         ('coinbase' in transaction['vin'][0].keys())): # Coinbase input, so don't count as failed.
 
                     self.failed_inputs += 1
-                    print("Failed transaction input: ", self.state["txid"], ":", i, sep = '')
+                    self.failed_inputs_list.append(self.state["txid"] + ':' + str(self.state["n"]))
 
             except (ValueError, IndexError) as e:
                 self.failed_inputs += 1
-                print("Failed transaction input: ", self.state["txid"], ":", i, sep = '')
+                self.failed_inputs_list.append(self.state["txid"] + ':' + str(self.state["n"]))
 
 
     def process_outputs(self, transaction):
@@ -559,7 +562,7 @@ class Parser:
             if (vout["scriptPubKey"]["type"] == "pubkey" and not self.process_output_p2pk(vout)) or \
                (vout["scriptPubKey"]["type"] == "witness_v1_taproot" and not self.process_output_p2tr(vout)):
                 self.failed_outputs += 1
-                print("Failed transaction output: ", self.state["txid"], ":", i, sep = '')
+                self.failed_outputs_list.append(self.state["txid"] + ':' + str(self.state["n"]))
 
 
     def process_block(self, n):

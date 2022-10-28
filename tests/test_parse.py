@@ -607,3 +607,54 @@ def test_parse_serialized_script(txid: str, vin_n: int, script: str, inputs: lis
 
     assert parser.parse_serialized_script(script, inputs) == expected_result
     assert (parser.ecdsa_data, parser.unmatched_ecdsa_data, parser.schnorr_data, parser.unmatched_schnorr_data) == expected_tuple
+
+
+@pytest.mark.parametrize("fake_tx, expected_failed_inputs, expected_failed_outputs", [
+        [{
+          "txid": "37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8",
+          "vin": [
+            {
+              "txid": "e700b7b330e4b56c5883d760f9cbe4fa47e0f62b350e108f1767bc07a4bbc07b",
+              "vout": 0,
+              "scriptSig": {
+                "asm": "",
+                "hex": ""
+              },
+              "txinwitness": [],
+              "sequence": 4294967294
+            },
+            {
+              "txid": "e700b7b330e4b56c5883d760f9cbe4fa47e0f62b350e108f1767bc07a4bbc07b",
+              "vout": 1,
+              "scriptSig": {
+                "asm": "",
+                "hex": ""
+              },
+              "txinwitness": [],
+              "sequence": 4294967294
+            }
+          ],
+          "vout": [
+            {
+              "value": 0.00965300,
+              "n": 0,
+              "scriptPubKey": {
+                "asm": "",
+                "hex": "",
+                "address": "",
+                "type": "witness_v1_taproot"
+              }
+            }
+          ]
+        },
+        ["37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8:0", # failed_inputs
+         "37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8:1"],
+        ["37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8:0"]] # failed_outputs
+    ])
+def test_failed_dict(fake_tx: dict, expected_failed_inputs: list, expected_failed_outputs: list):
+    parser.state["txid"] = fake_tx["txid"]
+    parser.process_inputs(fake_tx)
+    parser.process_outputs(fake_tx)
+
+    assert parser.failed_inputs_list == expected_failed_inputs
+    assert parser.failed_outputs_list == expected_failed_outputs
