@@ -7,6 +7,8 @@ from parse import Statistics
 from parse import Data_storage
 from parse import Parser
 
+from threading import Thread
+
 import pytest
 
 rpc = RPC()
@@ -49,16 +51,11 @@ def test_correct_schnorr_key(suspected_key: str, expected_result: bool):
                          [("03bc7a18a65c8468994f75a87e7407a82ffabbc44656417491b2649fb5ee5bfdac", 1, 0, 1),
                           ("159914d19974d9d2c8e658ff822f09e5f0e8a439ca5b4490d39df13f71843350", 1, 1, 2)])
 def test_increment_key_count(suspected_key: str, expected_ecdsa: int, expected_schnorr: int, expected_keys: int):
-    parser.increment_key_count(suspected_key)
+    parser.statistics.increment_key_count(suspected_key)
     assert parser.statistics.ecdsa == expected_ecdsa
     assert parser.statistics.schnorr == expected_schnorr
     assert parser.statistics.keys == expected_keys
 
-#def test_add_key_to_data_dict(suspected_key, signature, data_dict, expected_dict):
-    # TODO
-
-#def test_add_key_to_unmatched_data_dict(suspected_key, sigs, data_dict, expected_dict):
-    # TODO
 
 @pytest.mark.parametrize("txid, vin_n, expected_signature", [
     ("ad511d71762f4123df227e2e048672c4df8cc2ac056ee37f52ff33085b2a2c47", 0, "304502200f55222e27f6b6aff33e314339e569b54e80df76f628daa2c76ef56558bc650c022100c989ec3a0fad6b1aff1087378c219091de70bac9d7bf3ebfa7718a6c4fa7aeb701"), # P2PK
@@ -666,3 +663,84 @@ def test_failed_dict(fake_tx: dict, expected_failed_inputs: list, expected_faile
 
     assert parser.storage.failed_inputs_list == expected_failed_inputs
     assert parser.storage.failed_outputs_list == expected_failed_outputs
+
+
+def increment_10000x():
+    for i in range(10000):
+        statistics.inputs += 1
+
+def test_condition_race_increment():
+
+    statistics.inputs = 0
+
+    t1 = Thread(target=increment_10000x, args=())
+    t2 = Thread(target=increment_10000x, args=())
+    t3 = Thread(target=increment_10000x, args=())
+    t4 = Thread(target=increment_10000x, args=())
+
+    t1.start()
+    t2.start()
+    t3.start()
+    t4.start()
+
+    t1.join()
+    t2.join()
+    t3.join()
+    t4.join()
+
+    assert statistics.inputs == 40000
+    statistics.inputs = 0
+
+
+STATE = {"txid": "x"*32, "vin/vout": "vin", "n": "0"}
+def add_key_100x_ecdsa():
+    for letter in "abcdefitsn":
+        for letter2 in "abcdefitsn":
+            storage.add_key_to_data_dict(STATE, (letter+letter2) * 33, "NaN", storage.ecdsa_data, statistics)
+
+
+def add_key_25x_ecdsa():
+    for letter in "xylop":
+        for letter2 in "xylop":
+            storage.add_key_to_data_dict(STATE, (letter+letter2) * 33, "NaN", storage.ecdsa_data, statistics)
+
+
+def add_key_100x_schnorr():
+    for letter in "abcdefitsn":
+        for letter2 in "abcdefitsn":
+            storage.add_key_to_data_dict(STATE, (letter+letter2) * 32, "NaN", storage.schnorr_data, statistics)
+
+
+def add_key_25x_schnorr():
+    for letter in "xylop":
+        for letter2 in "xylop":
+            storage.add_key_to_data_dict(STATE, (letter+letter2) * 32, "NaN", storage.schnorr_data, statistics)
+
+
+def test_race_condition_add_key_to_data_dict():
+    statistics.ecdsa = 0
+    statistics.schnorr = 0
+    statistics.keys = 0
+    storage.ecdsa = {}
+    storage.schnorr = {}
+
+
+    t1 = Thread(target=add_key_100x_ecdsa, args=())
+    t2 = Thread(target=add_key_100x_schnorr, args=())
+    t3 = Thread(target=add_key_25x_ecdsa, args=())
+    t4 = Thread(target=add_key_25x_schnorr, args=())
+
+    t1.start()
+    t2.start()
+    t3.start()
+    t4.start()
+    t1.join()
+    t2.join()
+    t3.join()
+    t4.join()
+
+    assert statistics.ecdsa == 125
+    assert statistics.schnorr == 125
+    assert statistics.keys == 250
+    assert len(storage.schnorr_data) == 125
+    assert len(storage.ecdsa_data) == 125
