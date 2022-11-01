@@ -1,10 +1,11 @@
 #!/bin/python3
 import sys
 sys.path.append("/home/xyakimo1/crocs/src") # add here path to the project's source directory
-from parse import Parser
+from parse import Parser, RPC
 import pytest
 
-parser = Parser()
+rpc = RPC()
+parser = Parser(rpc)
 
 def set_state(parser: Parser, txid, vin_vout, n):
     parser.state["txid"] = txid

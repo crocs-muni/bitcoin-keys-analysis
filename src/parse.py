@@ -4,35 +4,18 @@ import bitcoin.rpc, json    # basic functionality
 import sys                  # argv
 import time, os             # Parser.print_statistics()
 
-class Parser:
-
+class RPC:
     bitcoin.SelectParams("mainnet")
     rpc = bitcoin.rpc.RawProxy() # RawProxy takes commands in hexa strings instead of structs, that is what we need
 
-    blocks = 0              # Number of blocks, that were passed to the script. Same with transactions, inputs (vin's) and outputs (vout's).
-    transactions = 0
-    inputs = 0
-    outputs = 0
+class Parser:
 
-    failed_inputs = 0       # Number of transaction inputs, in which we weren't able to find any public keys.
-    failed_outputs = 0      # Same, but only failed P2PK and P2TR outputs count (, because other types don't even have public keys in it).
-    ecdsa = 0
-    schnorr = 0
-    keys = 0
-
+    """
+        "Constants"
+    """
     import op_codes
     OP_CODES = op_codes.OP_CODES
 
-    ecdsa_data = {}
-    unmatched_ecdsa_data = {}
-    schnorr_data = {}
-    unmatched_schnorr_data = {}
-
-    failed_inputs_list = []
-    failed_outputs_list = []
-
-    DICTS = [(ecdsa_data, "ecdsa_data"), (unmatched_ecdsa_data, "unmatched_ecdsa_data"),\
-             (schnorr_data, "schnorr_data"), (unmatched_schnorr_data, "unmatched_schnorr_data")]
 
     ECDSA_SIG_LENGTHS = (146, 144, 142, 140, 138)   # Lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
     ECDSA_PUBKEY_LENGTHS = (66, 130)
@@ -42,7 +25,33 @@ class Parser:
     SCHNORR_SIG_LENGTHS = (128, 130)
     SCHNORR_PUBKEY_LENGTH = 64
 
-    state = {"txid": "", "vin/vout": "", "n": -1} # Holds info about what is currently being parsed.
+
+    def __init__(self, RPC: object):
+        self.rpc = RPC.rpc
+        self.state = {"txid": "", "vin/vout": "", "n": -1} # Holds info about what is currently being parsed.
+
+        self.blocks = 0         # Number of blocks, that were passed to the script. Same with transactions, inputs (vin's) and outputs (vout's).
+        self.transactions = 0
+        self.inputs = 0
+        self.outputs = 0
+
+        self.failed_inputs = 0  # Number of transaction inputs, in which we weren't able to find any public keys.
+        self.failed_outputs = 0 # Same, but only failed P2PK and P2TR outputs count (, because other types don't even have public keys in it).
+        self.ecdsa = 0
+        self.schnorr = 0
+        self.keys = 0
+
+        self.ecdsa_data = {}
+        self.unmatched_ecdsa_data = {}
+        self.schnorr_data = {}
+        self.unmatched_schnorr_data = {}
+
+        self.DICTS = [(self.ecdsa_data, "ecdsa_data"), (self.unmatched_ecdsa_data, "unmatched_ecdsa_data"),\
+                      (self.schnorr_data, "schnorr_data"), (self.unmatched_schnorr_data, "unmatched_schnorr_data")]
+
+        self.failed_inputs_list = []
+        self.failed_outputs_list = []
+
 
     """
         "Print" functions
@@ -590,4 +599,5 @@ class Parser:
 
 
 if __name__ == "__main__":
-    parser = Parser()
+    rpc = RPC()
+    parser = Parser(rpc)
