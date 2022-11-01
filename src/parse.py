@@ -29,17 +29,21 @@ class Parser:
     def __init__(self, RPC: object):
         self.rpc = RPC.rpc
         self.state = {"txid": "", "vin/vout": "", "n": -1} # Holds info about what is currently being parsed.
+        self.start_time = time.perf_counter()
 
-        self.blocks = 0         # Number of blocks, that were passed to the script. Same with transactions, inputs (vin's) and outputs (vout's).
-        self.transactions = 0
-        self.inputs = 0
-        self.outputs = 0
+        self.statistics = \
+        {
+            "blocks": 0,         # Number of blocks, that were passed to the script. Same with transactions, inputs (vin's) and outputs (vout's).
+            "transactions": 0,
+            "inputs": 0,
+            "outputs": 0,
 
-        self.failed_inputs = 0  # Number of transaction inputs, in which we weren't able to find any public keys.
-        self.failed_outputs = 0 # Same, but only failed P2PK and P2TR outputs count (, because other types don't even have public keys in it).
-        self.ecdsa = 0
-        self.schnorr = 0
-        self.keys = 0
+            "failed_inputs": 0,  # Number of transaction inputs, in which we weren't able to find any public keys.
+            "failed_outputs": 0, # Same, but only failed P2PK and P2TR outputs count (, because other types don't even have public keys in it).
+            "ecdsa": 0,
+            "schnorr": 0,
+            "keys": 0
+        }
 
         self.ecdsa_data = {}
         self.unmatched_ecdsa_data = {}
@@ -57,19 +61,19 @@ class Parser:
         "Print" functions
     """
 
-    def print_statistics(self, start_time):
+    def print_statistics(self):
         print("\n", "=" * os.get_terminal_size().columns, sep = '')
-        print ("Gathered ", self.keys, " keys: ", self.ecdsa, " ECDSA keys, ", \
-                self.schnorr," Schnorr Signature keys; in ", time.perf_counter() - start_time, " seconds.")
-        print("Failed to parse ", self.failed_inputs, " inputs ( {:0.2f}".format(self.failed_inputs/self.inputs*100),\
-               "%) and ", self.failed_outputs, " outputs ( {:0.2f}".format(self.failed_outputs/self.outputs*100), "%).")
+        print ("Gathered ", self.statistics["keys"], " keys: ", self.statistics["ecdsa"], " ECDSA keys, ", \
+                self.statistics["schnorr"]," Schnorr Signature keys; in ", time.perf_counter() - self.start_time, " seconds.")
+        print("Failed to parse ", self.statistics["failed_inputs"], " inputs ( {:0.2f}".format(self.statistics["failed_inputs"]/self.statistics["inputs"]*100),\
+               "%) and ", self.statistics["failed_outputs"], " outputs ( {:0.2f}".format(self.statistics["failed_outputs"]/self.statistics["outputs"]*100), "%).")
         print("=" * os.get_terminal_size().columns)
 
     def show_dict(self, dictionary):
         print(json.dumps(dictionary, indent = 2))
 
-    def print_speed(self, start_time):
-        print("Speed: {:0.2f} keys/sec".format(self.keys/(time.perf_counter() - start_time)))
+    def print_speed(self):
+        print("Speed: {:0.2f} keys/sec".format(self.statistics["keys"]/(time.perf_counter() - self.start_time)))
 
 
     """
@@ -86,10 +90,10 @@ class Parser:
 
     def increment_key_count(self, suspected_key):
         if len(suspected_key) in self.ECDSA_PUBKEY_LENGTHS:
-            self.ecdsa += 1
+            self.statistics["ecdsa"] += 1
         if len(suspected_key) == self.SCHNORR_PUBKEY_LENGTH:
-            self.schnorr += 1
-        self.keys += 1
+            self.statistics["schnorr"] += 1
+        self.statistics["keys"] += 1
 
 
     """
@@ -178,7 +182,7 @@ class Parser:
     def flush_if_needed(self, n, exception):
         for dict_tup in self.DICTS: 
             if self.data_dict_full(dict_tup[0]) or (exception and dict_tup[0] != {}):
-                file_name = "../gathered-data/" + dict_tup[1] + "_" + str(n) + ".txt"
+                file_name = "gathered-data/" + dict_tup[1] + "_" + str(n) + ".txt"
                 self.flush_data_dict(file_name, dict_tup[0])
 
 
@@ -529,7 +533,7 @@ class Parser:
         transaction = self.rpc.getrawtransaction(txid, True) # Getting transaction in verbose format
 
         self.state["txid"] = txid
-        self.transactions += 1
+        self.statistics["transactions"] += 1
 
         self.process_inputs(transaction)
         self.process_outputs(transaction)
@@ -541,7 +545,7 @@ class Parser:
         for i in range(len(transaction["vin"])):
             vin = transaction["vin"][i]
             self.state["n"] = i
-            self.inputs += 1
+            self.statistics["inputs"] += 1
             try:
 
                 # Run all extractors in turn, stop on success.
@@ -553,11 +557,11 @@ class Parser:
                         self.process_input_p2pk(vin) or \
                         ('coinbase' in transaction['vin'][0].keys())): # Coinbase input, so don't count as failed.
 
-                    self.failed_inputs += 1
+                    self.statistics["failed_inputs"] += 1
                     self.failed_inputs_list.append(self.state["txid"] + ':' + str(self.state["n"]))
 
             except (ValueError, IndexError) as e:
-                self.failed_inputs += 1
+                self.statistics["failed_inputs"] += 1
                 self.failed_inputs_list.append(self.state["txid"] + ':' + str(self.state["n"]))
 
 
@@ -566,16 +570,16 @@ class Parser:
         for i in range(len(transaction["vout"])):
             vout = transaction["vout"][i]
             self.state["n"] = i
-            self.outputs += 1
+            self.statistics["outputs"] += 1
 
             if (vout["scriptPubKey"]["type"] == "pubkey" and not self.process_output_p2pk(vout)) or \
                (vout["scriptPubKey"]["type"] == "witness_v1_taproot" and not self.process_output_p2tr(vout)):
-                self.failed_outputs += 1
+                self.statistics["failed_outputs"] += 1
                 self.failed_outputs_list.append(self.state["txid"] + ':' + str(self.state["n"]))
 
 
     def process_block(self, n):
-        self.blocks += 1
+        self.statistics["blocks"] += 1
         block_hash = self.rpc.getblockhash(n)
         block_transactions = self.rpc.getblock(block_hash)['tx']
 
@@ -584,18 +588,17 @@ class Parser:
 
 
     def process_blocks(self, start, end):
-        start_time = time.perf_counter()
 
         for n in range(start, end):
             self.process_block(n)
             self.flush_if_needed(n, False)
 
             if n % 10 == 0:
-                self.print_speed(start_time)
+                self.print_speed()
 
         self.flush_if_needed(n, True)
 
-        parser.print_statistics(start_time)
+        parser.print_statistics()
 
 
 if __name__ == "__main__":

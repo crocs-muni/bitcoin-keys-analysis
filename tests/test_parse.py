@@ -43,9 +43,9 @@ def test_correct_schnorr_key(suspected_key: str, expected_result: bool):
                           ("159914d19974d9d2c8e658ff822f09e5f0e8a439ca5b4490d39df13f71843350", 1, 1, 2)])
 def test_increment_key_count(suspected_key: str, expected_ecdsa: int, expected_schnorr: int, expected_keys: int):
     parser.increment_key_count(suspected_key)
-    assert parser.ecdsa == expected_ecdsa
-    assert parser.schnorr == expected_schnorr
-    assert parser.keys == expected_keys
+    assert parser.statistics["ecdsa"] == expected_ecdsa
+    assert parser.statistics["schnorr"] == expected_schnorr
+    assert parser.statistics["keys"] == expected_keys
 
 #def test_add_key_to_data_dict(suspected_key, signature, data_dict, expected_dict):
     # TODO
@@ -659,3 +659,8 @@ def test_failed_dict(fake_tx: dict, expected_failed_inputs: list, expected_faile
 
     assert parser.failed_inputs_list == expected_failed_inputs
     assert parser.failed_outputs_list == expected_failed_outputs
+
+
+def test_flush_data_dict():
+    #TODO
+    pass
