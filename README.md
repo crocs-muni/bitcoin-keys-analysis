@@ -14,10 +14,10 @@ A set of tools for extraction and analysis of Bitcoin ECDSA and Schnorr keys.
 ##### Parser.process_transaction(self, txid: str)
 
 ``` python
-$ python3 -i src/parse.py
+$ python3 -i parse.py
 >>> parser.process_transaction("37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8")
 True
->>> parser.show_dict(parser.storage.schnorr_data)
+>>> parser.show_dict(parser.schnorr_data)
 ```
 ``` JSON
 {
@@ -47,7 +47,7 @@ True
 #### Parser.process_blocks(self, start: int, end: int)
 
 ``` python
-$ python3 -i src/parse.py
+$ python3 -i parse.py
 >>> parser.process_blocks(739000, 739001)
 
 ==================================================================================================================================================
@@ -156,7 +156,7 @@ To use the extraction part of our project ([parse.py](src/parse.py)) a one must 
     
         And after that run Bitcoin Core without internet access.
     
-        `other/enable_no-internet.sh`
+        `./other/enable_no-internet.sh`
 
         `no-internet "bitcoind -daemon"`
 
@@ -173,7 +173,7 @@ To use the extraction part of our project ([parse.py](src/parse.py)) a one must 
     - Enabled RPC server (corresponding `~/.bitcoin/bitcoin.conf` file)
     - Completed instructions from [block_internet.md](other/block_internet.md) (optional, but strongly recommended)
 
-7. You are ready to go! Try to run `src/demo.py` in the project directory.
+7. You are ready to go! Try to run `./demo.py` in the project's src directory.
 
 ## For Developers
 To run tests a one will need to install [pytest](https://docs.pytest.org/en/7.1.x/getting-started.html) python3 module.
