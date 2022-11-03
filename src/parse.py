@@ -601,6 +601,27 @@ class Parser:
         parser.print_statistics()
 
 
+    def process_blocks_from_pipe(self, pipe_conn):
+        pipe_conn.send(([], {}))  # initiates communication
+        while True:
+
+            if not pipe_conn.poll():
+                time.sleep(1)
+                continue
+
+            task = pipe_conn.recv()
+            if task == 0:
+                pipe_conn.send(0) # Finished work signal.
+                return True
+            assert type(task) == list
+
+            for block_n in task:
+                self.process_block(block_n)
+
+            to_send = (task, self.statistics)
+            pipe_conn.send(to_send)
+
+
 if __name__ == "__main__":
     rpc = RPC()
     parser = Parser(rpc)
