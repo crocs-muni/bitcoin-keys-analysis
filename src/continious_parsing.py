@@ -207,6 +207,11 @@ class ContiniousParser:
                     self.send_email_on_event("recover_failure")
                     return False
 
+
+    def parse_forever():
+        # TODO
+
+
 if __name__ == "__main__":
     cp = ContiniousParser()
     cp.parse_range(range(739000, 739010), 4)

@@ -1,14 +1,11 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
-<TODO>:  Rewrite try-except's.
-         Save unknown stackitems to dictionary.
-         Save statistics of transaction types.
-         Should we remove "hash_type" byte in Schnorr's signatures?
+<TODO>:     Occasionally print out progress.
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: Tailor for multi-thread meta-center parsing.
+<TODO2>:    Rewrite try-except's - the script should never crash.
 ------------------------------------------------------------------------------------------------------------------------------
-PLAN: Tailor all the scripts so that analysis could run in real time (non-stop).
+<TODO3>:    Save statistics of transaction types.
 ------------------------------------------------------------------------------------------------------------------------------
-NOTE: Verbosity mode - print what exactly failed and what succeded.
+<TODO4>:    Update README.md
 ------------------------------------------------------------------------------------------------------------------------------

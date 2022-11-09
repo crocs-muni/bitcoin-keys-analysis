@@ -243,9 +243,6 @@ class Parser:
         if not self.correct_schnorr_signature(signature):
             signature = "NaN"
 
-        if len(signature) == 130:
-            signature = signature[:-2]  # Removing 'hash_type' byte (BIP341 - Common signature message)
-
         return signature
 
 
