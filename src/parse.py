@@ -29,7 +29,7 @@ class Parser:
     def __init__(self, RPC: object):
         self.rpc = RPC.rpc
         self.state = {"txid": "", "vin/vout": "", "n": -1} # Holds info about what is currently being parsed.
-        self.start_time = time.perf_counter()
+        self.start_time = time.time()
 
         self.statistics = \
         {
@@ -56,24 +56,31 @@ class Parser:
         self.failed_inputs_list = []
         self.failed_outputs_list = []
 
+        self.LISTS = [(self.failed_inputs_list, "failed_inputs"), (self.failed_outputs_list, "failed_outputs")]
 
     """
         "Print" functions
     """
 
     def print_statistics(self):
-        print("\n", "=" * os.get_terminal_size().columns, sep = '')
+        try:
+            print("\n", "=" * os.get_terminal_size().columns, sep = '')
+        except:
+            print("=============")
         print ("Gathered ", self.statistics["keys"], " keys: ", self.statistics["ecdsa"], " ECDSA keys, ", \
-                self.statistics["schnorr"]," Schnorr Signature keys; in ", time.perf_counter() - self.start_time, " seconds.")
+                self.statistics["schnorr"]," Schnorr Signature keys; in ", time.time() - self.start_time, " seconds.")
         print("Failed to parse ", self.statistics["failed_inputs"], " inputs ( {:0.2f}".format(self.statistics["failed_inputs"]/self.statistics["inputs"]*100),\
                "%) and ", self.statistics["failed_outputs"], " outputs ( {:0.2f}".format(self.statistics["failed_outputs"]/self.statistics["outputs"]*100), "%).")
-        print("=" * os.get_terminal_size().columns)
+        try:
+            print("=" * os.get_terminal_size().columns)
+        except:
+            print("=============")
 
     def show_dict(self, dictionary):
         print(json.dumps(dictionary, indent = 2))
 
     def print_speed(self):
-        print("Speed: {:0.2f} keys/sec".format(self.statistics["keys"]/(time.perf_counter() - self.start_time)))
+        print("Speed: {:0.2f} keys/sec".format(self.statistics["keys"]/(time.time() - self.start_time)))
 
 
     """
@@ -94,6 +101,11 @@ class Parser:
         if len(suspected_key) == self.SCHNORR_PUBKEY_LENGTH:
             self.statistics["schnorr"] += 1
         self.statistics["keys"] += 1
+
+
+    def reset_statistics(self):
+        for key in self.statistics.keys():
+            self.statistics[key] = 0
 
 
     """
@@ -176,6 +188,11 @@ class Parser:
             json.dump(data_dict, outfile, indent = 2)
         data_dict = {}
 
+    def flush_data_list(self, file_name, data_list):
+        with open(file_name, 'w') as outfile:
+            for line in data_list:
+                outfile.write(line + '\n')
+        data_list = []
 
     # This functions goes trough all data dictionaries and checks, whether they need to be flushed.
     # Argument <exception> is a bool value to force flushing: for example, at the very end of the script.
@@ -184,6 +201,11 @@ class Parser:
             if self.data_dict_full(dict_tup[0]) or (exception and dict_tup[0] != {}):
                 file_name = "gathered-data/" + dict_tup[1] + "_" + str(n) + ".txt"
                 self.flush_data_dict(file_name, dict_tup[0])
+
+        for list_tup in self.LISTS:
+            if self.data_dict_full(list_tup[0]) or (exception and list_tup[0] != []):
+                file_name = "gathered-data/" + list_tup[1] + "_" + str(n) + ".txt"
+                self.flush_data_list(file_name, list_tup[0])
 
 
     """
@@ -597,9 +619,7 @@ class Parser:
                 self.print_speed()
 
         self.flush_if_needed(n, True)
-
-        parser.print_statistics()
-
+        self.print_statistics()
 
     def process_blocks_from_pipe(self, pipe_conn):
         pipe_conn.send(([], {}))  # initiates communication
@@ -612,14 +632,17 @@ class Parser:
             task = pipe_conn.recv()
             if task == 0:
                 pipe_conn.send(0) # Finished work signal.
+                self.flush_if_needed(0, True)
                 return True
             assert type(task) == list
 
             for block_n in task:
                 self.process_block(block_n)
+                self.flush_if_needed(block_n, False)
 
             to_send = (task, self.statistics)
             pipe_conn.send(to_send)
+            self.reset_statistics()
 
 
 if __name__ == "__main__":

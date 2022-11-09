@@ -29,7 +29,7 @@ class ContiniousParser:
     }
     STATE_FILE = "state/parsing_state.json"
 
-    # [[parser1, process1, pipe1_conn, task1], [parser2, process2, pipe2_conn, task2]]
+    # [[parser1, process1, pipe1_conn, task1], [parser2, process2, pipe2_conn, task2], ..]
     parsers = []
     task_stack = []
 
@@ -59,7 +59,6 @@ class ContiniousParser:
 
 
     def assign_tasks(self) -> bool:
-
 
         if len(self.parsers) == 0:
             print("No tasks were assigned because there are no parsers!")
@@ -110,6 +109,12 @@ class ContiniousParser:
         time.sleep(MEASURMENT_DURATION) # we can afford sleep() because we call this function in a separate thread.
         print(f"Speed: {(self.state['keys'] - temp_keys) // MEASURMENT_DURATION} keys/sec.")
 
+    def print_state(self) -> None:
+        for key, value in self.state.items():
+            if key != "target" and key != "parsed":
+                print(f"{key}: {value}")
+
+
     def flush_state_to_file(self) -> bool:
         try:
             with open(self.STATE_FILE, "w") as file:
@@ -136,7 +141,7 @@ class ContiniousParser:
 
     def recover(self) -> bool:
         print("-------RECOVERING-------")
-        RECOVER_TIMEOUT = 60
+        RECOVER_TIMEOUT = 20
         start_time = int(time.time())
 
         while time.time() - start_time < RECOVER_TIMEOUT:
@@ -150,53 +155,58 @@ class ContiniousParser:
         #TODO
         pass
 
+
+    """
+        "Main" functions
+    """
+
+    def parse_range(self, range_to_parse: range, parser_count:int=os.cpu_count()) -> bool:
+        self.set_target(range(739000, 739010))
+
+        if not self.start_parsers(parser_count):
+            print("[ERROR] Could not start parsers!", file = sys.stderr)
+            exit(1)
+
+        while True: # parse (1), recover (2), repeat
+
+            try:
+                while True: #(1)
+
+                    assigned_some_tasks = self.assign_tasks()
+
+                    # If all tasks are done
+                    if not assigned_some_tasks and (set(self.state["target"]) == set(self.state["parsed"])):
+                        print("-------[SUCCESS]-------")
+                        self.print_state()
+                        self.flush_state_to_file()
+
+                        for parser in self.parsers:
+                            parser[1].join()
+                        return True
+
+                    # Backup state to file every 5 minutes
+                    if int(time.time()) % (60*5) == 0:
+                        self.flush_state_to_file()
+
+                    # Measure speed every 10 minutes
+                    """
+                    if int(time.time()) % (60*10) == 0:
+                        t = Thread(target=self.measure_speed())
+                        t.daemon = True
+                        t.start()
+                    """
+                    time.sleep(1)
+
+            except Exception as e: #(2)
+
+                print("-------[FAILURE]-------")
+                traceback.print_exc()
+
+                if not self.recover():
+                    print("[ERROR] Could not recover after failure!", file = sys.stderr)
+                    self.send_email_on_event("recover_failure")
+                    return False
+
 if __name__ == "__main__":
     cp = ContiniousParser()
-    cp.set_target(range(739000, 739010))
-
-    if not cp.start_parsers(4):
-        print("[ERROR] Could not start parsers!", file = sys.stderr)
-        exit(1)
-
-    #while True: # parse (1), recover (2), repeat
-
-    try:
-        while True: #(1)
-
-            assigned_some_tasks = cp.assign_tasks()
-
-            if not assigned_some_tasks and (set(cp.state["target"]) == set(cp.state["parsed"])):
-                print("-------[SUCCESS]-------")
-
-                for key, value in cp.state.items():
-                    if key != "target" and key != "parsed":
-                        print(f"{key}: {value}")
-
-                cp.flush_state_to_file()
-                for parser in cp.parsers:
-                    parser[1].join()
-                exit(0)
-
-
-            # Backup state to file every 5 minutes
-            if int(time.time()) % (60*5) == 0:
-                cp.flush_state_to_file()
-
-            # Measure speed every 10 minutes
-            if int(time.time()) % (60*10) == 0:
-                t = Thread(target=cp.measure_speed())
-                t.daemon = True
-                t.start()
-
-            time.sleep(1)
-
-    except Exception as e: #(2)
-
-        print("-------[FAILURE]-------")
-        traceback.print_exc()
-        """
-            if not cp.recover():
-                print("[ERROR] Could not recover after failure!", file = sys.stderr)
-                cp.send_email_on_event("recover_failure")
-                exit(1)
-        """
+    cp.parse_range(range(739000, 739010), 4)
