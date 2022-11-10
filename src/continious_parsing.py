@@ -2,6 +2,7 @@
 
 import os, sys, time, traceback
 import json
+from datetime import timedelta
 from threading import Thread
 from multiprocessing import Process, Pipe
 
@@ -169,6 +170,7 @@ class ContiniousParser:
 
         while True: # parse (1), recover (2), repeat
 
+            start_timestamp = time.time()
             try:
                 while True: #(1)
 
@@ -188,13 +190,12 @@ class ContiniousParser:
                     if int(time.time()) % (60*5) == 0:
                         self.flush_state_to_file()
 
-                    # Measure speed every 10 minutes
-                    """
+                    # Print progress every 10 minutes
                     if int(time.time()) % (60*10) == 0:
-                        t = Thread(target=self.measure_speed())
-                        t.daemon = True
-                        t.start()
-                    """
+                        time_diff = int(time.time() - start_timestamp)
+                        print(f"Running for <{str(timedelta(seconds=time_diff))}> and gathered <{self.state['keys']}> keys",\
+                                f"({self.state['keys'] // time_diff} keys/sec).")
+
                     time.sleep(1)
 
             except Exception as e: #(2)
@@ -210,6 +211,7 @@ class ContiniousParser:
 
     def parse_forever():
         # TODO
+        pass
 
 
 if __name__ == "__main__":

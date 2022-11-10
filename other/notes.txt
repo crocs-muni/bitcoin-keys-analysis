@@ -1,7 +1,7 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
-<TODO>:     Occasionally print out progress.
+<TODO>:     Continious parsing logs.
 ------------------------------------------------------------------------------------------------------------------------------
 <TODO2>:    Rewrite try-except's - the script should never crash.
 ------------------------------------------------------------------------------------------------------------------------------
