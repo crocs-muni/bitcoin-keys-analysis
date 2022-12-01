@@ -1,14 +1,24 @@
 #!/usr/bin/python3
 
 import bitcoin.rpc, json    # basic functionality
-import sys                  # argv
 import time, os             # Parser.print_statistics()
+import logging
 
 class RPC:
     bitcoin.SelectParams("mainnet")
     rpc = bitcoin.rpc.RawProxy() # RawProxy takes commands in hexa strings instead of structs, that is what we need
 
 class Parser:
+
+    logger = logging.getLogger(__name__)
+
+    file_handler = logging.FileHandler("logs/parser.log")
+    file_handler.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(process)d | %(message)s | %(funcName)s | %(lineno)d")
+    file_handler.setFormatter(formatter)
+
+    logger.addHandler(file_handler)
+    logger.setLevel(logging.WARNING)
 
     """
         "Constants"
@@ -626,7 +636,7 @@ class Parser:
 
             if not pipe_conn.poll():
                 if time.time() - last_done_task_timestamp > TASK_TIMEOUT:
-                    print(f"Parser (pid {os.getpid()}) didn't recieve any tasks for {TASK_TIMEOUT} seconds - teriminating.")
+                    self.logger.critical(f"Didn't recieve any tasks in {TASK_TIMEOUT} seconds - teriminating.")
                     return False
                 time.sleep(1)
                 continue
@@ -637,10 +647,12 @@ class Parser:
                 self.flush_if_needed(0, True)
                 return True
             assert type(task) == list
+            self.logger.info(f"Recieved task: {task}.")
 
             for block_n in task:
                 self.process_block(block_n)
                 self.flush_if_needed(block_n, False)
+            self.logger.info(f"Worked task ({task}) around.")
 
             to_send = (task, self.statistics)
             pipe_conn.send(to_send)

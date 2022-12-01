@@ -1,11 +1,9 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
-<TODO>:    Logs.
+<TODO>:    Graphs of transaction types.
 ------------------------------------------------------------------------------------------------------------------------------
-<TODO2>:    Graphs of transaction types.
+<TODO2>:    Rename files: continious_parser.py, parser.py, data.txt -> data.json
 ------------------------------------------------------------------------------------------------------------------------------
-<TODO3>:    Rename files: continious_parser.py, parser.py, data.txt -> data.json
-------------------------------------------------------------------------------------------------------------------------------
-<TODO4>:    Update README.md
+<TODO3>:    Update README.md
 ------------------------------------------------------------------------------------------------------------------------------

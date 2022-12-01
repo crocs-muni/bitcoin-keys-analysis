@@ -10,6 +10,17 @@ from parse import Parser, RPC
 
 class ContiniousParser:
 
+    logger = logging.getLogger(__name__)
+
+    file_handler = logging.FileHandler("logs/continious_parsing.log")
+    file_handler.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s | %(funcName)s | %(lineno)d")
+    file_handler.setFormatter(formatter)
+
+    logger.addHandler(file_handler)
+    logger.setLevel(logging.INFO)
+
+
     rpc = RPC()
 
     state = \
@@ -53,20 +64,20 @@ class ContiniousParser:
 
         if self.parsers != []:
             pids = [parser[1].pid for parser in self.parsers]
-            print(f"Was trying to start parsers, but there were already some parsers, their pids: {pids}. Terminating them.")
+            self.logger.warning(f"Was trying to start parsers, but there were already some parsers, their pids: {pids}. Terminating them.")
             for parser in self.parsers:
                 parser[1].terminate()
             self.parsers = []
 
         if len(self.state["target"]) == 0:
-            print("[ERROR] Did not start the parsers because target is empty! Set it with ContiniousParser.set_target().", file = sys.stderr)
+            self.logger.error("Did not start the parsers because target is empty! Set it with ContiniousParser.set_target().")
             return False
 
         self.generate_task_stack()
 
         self.parsers = [self.create_parser() for i in range(parser_count)]
         pids = [parser[1].pid for parser in self.parsers]
-        print(f"Successfully started {parser_count} parsers. Their pids are: {pids}")
+        self.logger.info(f"Successfully started {parser_count} parsers. Their pids are: {pids}")
 
         return True
 
@@ -77,37 +88,37 @@ class ContiniousParser:
         timed_out_parser[1].terminate()
 
         self.task_stack += timed_out_task
-        print(f"Put timed out task {timed_out_task} back to the task stack.")
+        self.logger.info(f"Put timed out task {timed_out_task} back to the task stack.")
         new_parser = self.create_parser()
 
         if new_parser[1].is_alive():
             self.parsers.append(new_parser)
-            print(f"Successfully restarted parser (pid {old_pid}). New pid is {new_parser[1].pid}.")
+            self.logger.info(f"Successfully restarted parser (pid {old_pid}). New pid is {new_parser[1].pid}.")
             return True
 
-        print(f"Failed to restart timed out parser (pid {old_pid}) with task {timed_out_task}.")
+        self.logger.error(f"Failed to restart timed out parser (pid {old_pid}) with task {timed_out_task}.")
         return False
 
     def refill_parsers(self, parser_count: int) -> bool:
-        print(f"We are lacking parsers! Current amount is {len(self.parsers)}, not {parser_count}.")
+        self.logger.warning(f"We are lacking parsers! Current amount is {len(self.parsers)}, not {parser_count}.")
         for i in range(parser_count - len(self.parsers)):
 
             new_parser = self.create_parser()
             if new_parser[1].is_alive():
                 self.parsers.append(new_parser)
-                print(f"Succesfully added a new parser with pid {new_parser[1].pid}.")
+                self.logger.info(f"Succesfully added a new parser with pid {new_parser[1].pid}.")
 
             else:
-                print(f"Failed to add a new parser.")
+                self.logger.warning(f"Failed to add a new parser.")
 
-        print(f"Current amount of parsers: {len(self.parsers)}")
+        self.logger.info(f"Current amount of parsers: {len(self.parsers)}")
         return len(self.parsers) == parser_count
 
 
     def assign_tasks(self) -> bool:
 
         if len(self.parsers) == 0:
-            print("No tasks were assigned because there are no parsers!")
+            self.logger.error("No tasks were assigned because there are no parsers!")
             return False
 
         to_return = False
@@ -118,13 +129,14 @@ class ContiniousParser:
             pipe_conn = parser[2]
             if not pipe_conn.poll():
                 if time.time() - parser[4] > PARSER_TIMEOUT:
+                    self.logger.error(f"Parser (pid {parser[1].pid}) timed out.")
                     self.restart_parser(i)
                 continue
 
             parser_response = pipe_conn.recv()
             if parser_response == 0: # Parser finished it's work
                 parser[1].join()
-                print(f"Joined parser (pid {parser[1].pid}) with exitcode {parser[1].exitcode}")
+                self.logger.info(f"Joined parser (pid {parser[1].pid}) with exitcode {parser[1].exitcode}")
                 self.parsers.remove(parser)
                 return False
 
@@ -133,7 +145,7 @@ class ContiniousParser:
             self.update_statistics(parser_response[1])
 
             if len(self.task_stack) == 0:
-                print(f"No tasks were assigned because the task stack is empty! {len(self.parsers)} parsers still working.")
+                self.logger.info(f"No tasks were assigned because the task stack is empty! {len(self.parsers)} parsers still working.")
                 pipe_conn.send(0)
                 return False
 
@@ -160,8 +172,7 @@ class ContiniousParser:
 
     def print_speed(self, start_timestamp) -> None:
         time_diff = int(time.time() - start_timestamp)
-        print(f"Running for {str(timedelta(seconds=time_diff))} and gathered {self.state['keys']} keys",\
-                f"({self.state['keys'] // time_diff} keys/sec).")
+        self.logger.info(f"Running for {str(timedelta(seconds=time_diff))} and gathered {self.state['keys']} keys ({self.state['keys'] // time_diff} keys/sec).")
 
     def print_state(self) -> None:
         for key, value in self.state.items():
@@ -172,7 +183,7 @@ class ContiniousParser:
     def all_tasks_done(self) -> None:
         for i, parser in enumerate(self.parsers):
             parser[1].join()
-            print(f"Joined parser (pid {parser[1].pid}) with exitcode {parser[1].exitcode}")
+            self.logger.info(f"Joined parser (pid {parser[1].pid}) with exitcode {parser[1].exitcode}")
         self.parsers = []
 
         print("-------[SUCCESS]-------")
@@ -186,9 +197,10 @@ class ContiniousParser:
                 json.dump(self.state, file, indent = 2)
 
         except Exception as e:
-            print("[ERROR] Could not flush the state to a file:\n", e, file = sys.stderr)
+            self.logger.error("Could not flush the state to a file.")
             return False
 
+        self.logger.info("Flushed the state to the file.")
         return True
 
 
@@ -198,25 +210,26 @@ class ContiniousParser:
                 self.state = json.load(file)
 
         except Exception as e:
-            print("[ERROR] Could not restrore the state from a file:\n", e, file = sys.stderr)
+            self.logger.error("Could not restrore the state from a file.")
             return False
 
+        self.logger.info("Restored state from the file.")
         return True
 
 
     def recover(self, parser_count: int = os.cpu_count()) -> bool:
-        print("-------RECOVERING-------")
+        self.logger.warning("Started recovery.")
         RECOVERY_TRIES = 5
 
         for i in range(RECOVERY_TRIES):
 
             if self.restore_state_from_file() and self.start_parsers(parser_count):
                 self.generate_task_stack()
-                print("[RECOVERING] Success!")
-                print("------------------------")
+                self.logger.info("Successfull recovery.")
                 return True
             time.sleep(10)
 
+        self.logger.error("Failed recovery.")
         return False
 
 
@@ -233,7 +246,7 @@ class ContiniousParser:
         self.set_target(range_to_parse)
 
         if not self.start_parsers(parser_count):
-            print("[ERROR] Could not start parsers!", file = sys.stderr)
+            self.logger.error("Could not start parsers!")
             return False
 
         FAILURE_TOLERANCE = 3
@@ -264,21 +277,19 @@ class ContiniousParser:
 
             except Exception as e: #(2)
 
-                print("-------[FAILURE]-------")
-                traceback.print_exc()
-                print("-----------------------")
+                self.logger.exception("Something went wrong. We are outside `parse` loop.")
 
                 if i == FAILURE_TOLERANCE:
                     break
 
                 if not self.recover(parser_count):
-                    print("[ERROR] Could not recover after failure!", file = sys.stderr)
                     self.send_email_on_event("recover_failure")
                     return False
 
+        self.logger.critical("Failure tolerance exceeded (failed {FAILURE_TOLERANCE} times) - exiting the script.")
         for parser in self.parsers:
             parser[1].terminate()
-            print(f"Teminated parser (pid {parser[1].pid}) because the script exceeded failure tolerance (failed {FAILURE_TOLERANCE} times).")
+            self.logger.warning(f"Teminated parser (pid {parser[1].pid}) because the script exceeded failure tolerance.")
         return False
 
     def parse_forever():
