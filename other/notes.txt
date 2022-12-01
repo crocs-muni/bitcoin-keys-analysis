@@ -1,11 +1,11 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
-<TODO>:     Continious parsing logs.
+<TODO>:    Logs.
 ------------------------------------------------------------------------------------------------------------------------------
-<TODO2>:    Rewrite try-except's - the script should never crash.
+<TODO2>:    Graphs of transaction types.
 ------------------------------------------------------------------------------------------------------------------------------
-<TODO3>:    Save statistics of transaction types.
+<TODO3>:    Rename files: continious_parser.py, parser.py, data.txt -> data.json
 ------------------------------------------------------------------------------------------------------------------------------
 <TODO4>:    Update README.md
 ------------------------------------------------------------------------------------------------------------------------------

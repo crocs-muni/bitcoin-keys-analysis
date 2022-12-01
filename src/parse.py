@@ -620,9 +620,14 @@ class Parser:
 
     def process_blocks_from_pipe(self, pipe_conn):
         pipe_conn.send(([], {}))  # initiates communication
+        last_done_task_timestamp = time.time()
+        TASK_TIMEOUT = 60
         while True:
 
             if not pipe_conn.poll():
+                if time.time() - last_done_task_timestamp > TASK_TIMEOUT:
+                    print(f"Parser (pid {os.getpid()}) didn't recieve any tasks for {TASK_TIMEOUT} seconds - teriminating.")
+                    return False
                 time.sleep(1)
                 continue
 
@@ -640,6 +645,7 @@ class Parser:
             to_send = (task, self.statistics)
             pipe_conn.send(to_send)
             self.reset_statistics()
+            last_done_task_timestamp = time.time()
 
 
 if __name__ == "__main__":
