@@ -36,6 +36,7 @@ class ContiniousParser:
         "schnorr": 0,
         "keys": 0,
 
+        "tx_types": {},
         "parsed": [],
         "target": []
     }
@@ -143,6 +144,7 @@ class ContiniousParser:
             assert parser[3] == parser_response[0]  # otherwise parsed what we wanted it to parse.
             self.update_block_state(parser_response[0])
             self.update_statistics(parser_response[1])
+            self.update_types(parser_response[2])
 
             if len(self.task_stack) == 0:
                 self.logger.info(f"No tasks were assigned because the task stack is empty! {len(self.parsers)} parsers still working.")
@@ -163,12 +165,22 @@ class ContiniousParser:
         return to_return
 
 
+    def update_block_state(self, completed_task: set) -> None:
+        self.state["parsed"] += completed_task
+
     def update_statistics(self, statistics: dict) -> None:
         for key, value in statistics.items():
             self.state[key] += value
 
-    def update_block_state(self, completed_task: set) -> None:
-        self.state["parsed"] += completed_task
+    def update_types(self, types: dict) -> None:
+        for month in types.keys():
+
+            if not month in self.state["tx_types"].keys():
+                self.state["tx_types"][month] = json.loads(json.dumps(Parser.INIT_TYPES_DICT)) # deep copy
+
+            for tx_type, count in types[month].items():
+                self.state["tx_types"][month][tx_type] += count
+
 
     def print_speed(self, start_timestamp) -> None:
         time_diff = int(time.time() - start_timestamp)
@@ -176,7 +188,7 @@ class ContiniousParser:
 
     def print_state(self) -> None:
         for key, value in self.state.items():
-            if key != "target" and key != "parsed":
+            if key != "tx_types" and key != "target" and key != "parsed":
                 print(f"{key}: {value}")
 
 
@@ -299,4 +311,3 @@ class ContiniousParser:
 
 if __name__ == "__main__":
     cp = ContiniousParser()
-    cp.parse_range(range(739000, 739010), 4)

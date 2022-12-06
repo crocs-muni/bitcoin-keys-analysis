@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 
-import bitcoin.rpc, json    # basic functionality
-import time, os             # Parser.print_statistics()
-import logging
+import bitcoin.rpc, json            # basic functionality
+import time, os                     # Parser.print_statistics()
+import logging                      # logging
+from datetime import datetime       # transaction types graphs
+import matplotlib.pyplot as plt     # transaction types graphs
 
 class RPC:
     bitcoin.SelectParams("mainnet")
@@ -35,6 +37,7 @@ class Parser:
     SCHNORR_SIG_LENGTHS = (128, 130)
     SCHNORR_PUBKEY_LENGTH = 64
 
+    INIT_TYPES_DICT = {'nonstandard': 0, 'pubkey': 0, 'pubkeyhash': 0, 'scripthash': 0, 'multisig': 0, 'nulldata': 0, 'witness_v0_scripthash': 0, 'witness_v0_keyhash': 0, 'witness_v1_taproot': 0, 'witness_unknown': 0}
 
     def __init__(self, RPC: object):
         self.rpc = RPC.rpc
@@ -54,6 +57,7 @@ class Parser:
             "schnorr": 0,
             "keys": 0
         }
+        self.types = {}
 
         self.ecdsa_data = {}
         self.unmatched_ecdsa_data = {}
@@ -91,6 +95,19 @@ class Parser:
 
     def print_speed(self):
         print("Speed: {:0.2f} keys/sec".format(self.statistics["keys"]/(time.time() - self.start_time)))
+
+    def draw_tx_types_graph(self, types_dict: dict):
+        months = sorted(types_dict.keys())
+
+        for tx_type in self.INIT_TYPES_DICT.keys():
+            y_values = [types_dict[month][tx_type] for month in months]
+            plt.plot(months, y_values, label = tx_type)
+
+        plt.xlabel("Year.Month")
+        plt.ylabel("Count of transactions")
+        plt.title("Bitcoin transaction types distribution over time.")
+        plt.legend()
+        plt.show()
 
 
     """
@@ -276,7 +293,7 @@ class Parser:
         try:
             int(command, 16)
         except:
-            print("Invalid script command '", command, "'", sep = '')
+            self.logger.debug(f"Invalid script command '{command}'.")
             return None, None
 
         length = int(command, 16) # Length in bytes
@@ -343,8 +360,7 @@ class Parser:
                 schnorr_sigs.append(item)
                 continue
 
-            #print("Unknown stack item:", item)
-            #return False
+            self.logger.debug(f"Unknown stack item '{item}'.")
 
         return ecdsa_keys, ecdsa_sigs, schnorr_keys, schnorr_sigs
 
@@ -571,8 +587,7 @@ class Parser:
 
     def process_inputs(self, transaction):
         self.state["vin/vout"] = "vin"
-        for i in range(len(transaction["vin"])):
-            vin = transaction["vin"][i]
+        for i, vin in enumerate(transaction["vin"]):
             self.state["n"] = i
             self.statistics["inputs"] += 1
             try:
@@ -596,8 +611,12 @@ class Parser:
 
     def process_outputs(self, transaction):
         self.state["vin/vout"] = "vout"
-        for i in range(len(transaction["vout"])):
-            vout = transaction["vout"][i]
+
+        month = str(datetime.fromtimestamp(transaction["time"]).strftime('%Y.%m'))
+        if month not in self.types.keys():
+            self.types[month] = json.loads(json.dumps(self.INIT_TYPES_DICT)) # deep copy
+
+        for i, vout in enumerate(transaction["vout"]):
             self.state["n"] = i
             self.statistics["outputs"] += 1
 
@@ -606,6 +625,12 @@ class Parser:
                 self.statistics["failed_outputs"] += 1
                 self.failed_outputs_list.append(self.state["txid"] + ':' + str(self.state["n"]))
 
+            tx_type = vout["scriptPubKey"]["type"]
+            if tx_type not in self.INIT_TYPES_DICT.keys():
+                self.logger.warning(f"Unknown transaction type '{tx_type}' in {transaction['txid']}:{i}.")
+                continue
+
+            self.types[month][tx_type] += 1
 
     def process_block(self, n):
         self.statistics["blocks"] += 1
@@ -629,14 +654,14 @@ class Parser:
         self.print_statistics()
 
     def process_blocks_from_pipe(self, pipe_conn):
-        pipe_conn.send(([], {}))  # initiates communication
+        pipe_conn.send(([], {}, {}))  # initiates communication
         last_done_task_timestamp = time.time()
         TASK_TIMEOUT = 60
         while True:
 
             if not pipe_conn.poll():
                 if time.time() - last_done_task_timestamp > TASK_TIMEOUT:
-                    self.logger.critical(f"Didn't recieve any tasks in {TASK_TIMEOUT} seconds - teriminating.")
+                    self.logger.critical(f"Didn't recieve any tasks in {TASK_TIMEOUT} seconds - terminating.")
                     return False
                 time.sleep(1)
                 continue
@@ -654,9 +679,10 @@ class Parser:
                 self.flush_if_needed(block_n, False)
             self.logger.info(f"Worked task ({task}) around.")
 
-            to_send = (task, self.statistics)
+            to_send = (task, self.statistics, self.types)
             pipe_conn.send(to_send)
             self.reset_statistics()
+            self.types = {}
             last_done_task_timestamp = time.time()
 
 

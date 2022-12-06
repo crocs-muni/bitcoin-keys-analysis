@@ -646,7 +646,8 @@ def test_parse_serialized_script(txid: str, vin_n: int, script: str, inputs: lis
                 "type": "witness_v1_taproot"
               }
             }
-          ]
+          ],
+          "time": 1636868413
         },
         ["37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8:0", # failed_inputs
          "37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8:1"],
