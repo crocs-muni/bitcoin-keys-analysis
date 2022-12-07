@@ -662,6 +662,117 @@ def test_failed_dict(fake_tx: dict, expected_failed_inputs: list, expected_faile
     assert parser.failed_outputs_list == expected_failed_outputs
 
 
+@pytest.mark.parametrize("txid, expected_types", [
+        [
+            "1e3c85f59802e3907a254766fd466e308888bf3fcaa0723a9599b8ff41028503",
+            {"2009.04":
+                {
+                'nonstandard': 0,
+                'pubkey': 1,
+                'pubkeyhash': 0,
+                'scripthash': 0,
+                'multisig': 0,
+                'nulldata': 0,
+                'witness_v0_scripthash': 0,
+                'witness_v0_keyhash': 0,
+                'witness_v1_taproot': 0,
+                'witness_unknown': 0
+                }
+            }
+        ],
+        [
+            "c0d210f7b6db4047f5852f98003ac46665ed17f6987f0b21af56998ed7a52c9a",
+            {"2021.09":
+                {
+                'nonstandard': 0,
+                'pubkey': 0,
+                'pubkeyhash': 1,
+                'scripthash': 2,
+                'multisig': 0,
+                'nulldata': 0,
+                'witness_v0_scripthash': 1,
+                'witness_v0_keyhash': 0,
+                'witness_v1_taproot': 0,
+                'witness_unknown': 0
+                }
+            }
+        ],
+        [
+            "33e794d097969002ee05d336686fc03c9e15a597c1b9827669460fac98799036",
+            {"2021.11":
+                {
+                'nonstandard': 0,
+                'pubkey': 0,
+                'pubkeyhash': 0,
+                'scripthash': 0,
+                'multisig': 0,
+                'nulldata': 1,
+                'witness_v0_scripthash': 0,
+                'witness_v0_keyhash': 0,
+                'witness_v1_taproot': 1,
+                'witness_unknown': 0
+                }
+            }
+        ],
+        [
+            "6dfb6970fff536ae05a7e7bf1c828d5315350501bd392a9304e61c138bca3db7",
+            {"2021.11":
+                {
+                'nonstandard': 0,
+                'pubkey': 0,
+                'pubkeyhash': 0,
+                'scripthash': 0,
+                'multisig': 0,
+                'nulldata': 0,
+                'witness_v0_scripthash': 0,
+                'witness_v0_keyhash': 1,
+                'witness_v1_taproot': 0,
+                'witness_unknown': 1
+                }
+            }
+        ],
+        [
+            "c16fab844429f1f741d4d1c9c021a2c79c9496186bb65d0fd6422b8798483842",
+            {"2015.02":
+                {
+                'nonstandard': 0,
+                'pubkey': 0,
+                'pubkeyhash': 1,
+                'scripthash': 0,
+                'multisig': 1,
+                'nulldata': 0,
+                'witness_v0_scripthash': 0,
+                'witness_v0_keyhash': 0,
+                'witness_v1_taproot': 0,
+                'witness_unknown': 0
+                }
+            }
+        ],
+        [
+            "03acfae47d1e0b7674f1193237099d1553d3d8a93ecc85c18c4bec37544fe386",
+            {"2011.10":
+                {
+                'nonstandard': 1,
+                'pubkey': 0,
+                'pubkeyhash': 1,
+                'scripthash': 0,
+                'multisig': 0,
+                'nulldata': 0,
+                'witness_v0_scripthash': 0,
+                'witness_v0_keyhash': 0,
+                'witness_v1_taproot': 0,
+                'witness_unknown': 0
+                }
+            }
+        ]
+    ])
+def test_tx_types_process_outputs(txid: str, expected_types: dict):
+    parser.types = {}
+    transaction = parser.rpc.getrawtransaction(txid, True)
+    parser.process_outputs(transaction)
+    assert parser.types == expected_types
+
+
 def test_flush_data_dict():
     #TODO
     pass
