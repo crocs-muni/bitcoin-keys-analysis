@@ -1,20 +1,20 @@
 #!/usr/bin/python3
 
 import bitcoin.rpc, json            # basic functionality
-import time, os                     # Parser.print_statistics()
+import time, os                     # BitcoinPublicKeyParser.print_statistics()
 import logging                      # logging
 from datetime import datetime       # transaction types graphs
 import matplotlib.pyplot as plt     # transaction types graphs
 
-class RPC:
+class BitcoinRPC:
     bitcoin.SelectParams("mainnet")
     rpc = bitcoin.rpc.RawProxy() # RawProxy takes commands in hexa strings instead of structs, that is what we need
 
-class Parser:
+class BitcoinPublicKeyParser:
 
     logger = logging.getLogger(__name__)
 
-    file_handler = logging.FileHandler("logs/parser.log")
+    file_handler = logging.FileHandler("logs/bitcoin_parser.log")
     file_handler.setLevel(logging.INFO)
     formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(process)d | %(message)s | %(funcName)s | %(lineno)d")
     file_handler.setFormatter(formatter)
@@ -39,8 +39,8 @@ class Parser:
 
     INIT_TYPES_DICT = {'nonstandard': 0, 'pubkey': 0, 'pubkeyhash': 0, 'scripthash': 0, 'multisig': 0, 'nulldata': 0, 'witness_v0_scripthash': 0, 'witness_v0_keyhash': 0, 'witness_v1_taproot': 0, 'witness_unknown': 0}
 
-    def __init__(self, RPC: object):
-        self.rpc = RPC.rpc
+    def __init__(self, BitcoinRPC: object):
+        self.rpc = BitcoinRPC.rpc
         self.state = {"txid": "", "vin/vout": "", "n": -1} # Holds info about what is currently being parsed.
         self.start_time = time.time()
 
@@ -226,7 +226,7 @@ class Parser:
     def flush_if_needed(self, n, exception):
         for dict_tup in self.DICTS: 
             if self.data_dict_full(dict_tup[0]) or (exception and dict_tup[0] != {}):
-                file_name = "gathered-data/" + dict_tup[1] + "_" + str(n) + ".txt"
+                file_name = "gathered-data/" + dict_tup[1] + "_" + str(n) + ".json"
                 self.flush_data_dict(file_name, dict_tup[0])
 
         for list_tup in self.LISTS:
@@ -687,5 +687,5 @@ class Parser:
 
 
 if __name__ == "__main__":
-    rpc = RPC()
-    parser = Parser(rpc)
+    rpc = BitcoinRPC()
+    parser = BitcoinPublicKeyParser(rpc)

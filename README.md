@@ -10,11 +10,11 @@ A set of tools for extraction and analysis of Bitcoin ECDSA and Schnorr keys.
 3. [For Developers](#for-developers)
 ## Basic Usage Demonstration
 
-### [parse.py](src/parse.py)
-##### Parser.process_transaction(self, txid: str)
+### [bitcoin_public_key_parser.py](src/bitcoin_public_key_parser.py)
+##### BitcoinPublicKeyParser.process_transaction(self, txid: str)
 
 ``` python
-$ python3 -i parse.py
+$ python3 -i src/bitcoin_public_key_parser.py
 >>> parser.process_transaction("37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8")
 True
 >>> parser.show_dict(parser.schnorr_data)
@@ -44,10 +44,10 @@ True
   ]
 }
 ```
-#### Parser.process_blocks(self, start: int, end: int)
+#### BitcoinPublicKeyParser.process_blocks(self, start: int, end: int)
 
 ``` python
-$ python3 -i parse.py
+$ python3 -i src/bitcoin_public_key_parser.py
 >>> parser.process_blocks(739000, 739001)
 
 ==================================================================================================================================================
@@ -56,7 +56,7 @@ Failed to parse  0  inputs ( 0.00 %) and  0  outputs ( 0.00 %).
 ==================================================================================================================================================
 ```
 ``` bash
-$ head gathered-data/ecdsa_data_739000.txt
+$ head gathered-data/ecdsa_data_739000.json
 ```
 ``` JSON
 {
@@ -71,7 +71,7 @@ $ head gathered-data/ecdsa_data_739000.txt
     {
 ```
 ``` bash
-$ head gathered-data/unmatched_ecdsa_data_739000.txt
+$ head gathered-data/unmatched_ecdsa_data_739000.json
 ```
 ``` JSON
 {
@@ -86,7 +86,7 @@ $ head gathered-data/unmatched_ecdsa_data_739000.txt
     },
 ```
 ``` bash 
-$ head gathered-data/schnorr_data_739000.txt
+$ head gathered-data/schnorr_data_739000.json
 ```
 ``` JSON
 {
@@ -100,7 +100,7 @@ $ head gathered-data/schnorr_data_739000.txt
   "6ea0037df9f8708723834c93b9f0b1cc558be0e394aa22be9e841ae8e871f890": [
     {
 ```
-If you feel interested at this point, look through [parse.py](src/parse.py) file to see, what other functions are there.
+If you feel interested at this point, look through [bitcoin_public_key_parser.py](src/bitcoin_public_key_parser.py) file to see, what other functions are there.
 
 ## Getting Started
 ### Prerequisites
@@ -114,7 +114,7 @@ If you feel interested at this point, look through [parse.py](src/parse.py) file
   `pip3 install python-bitcoinlib`
 
 ### Info about the blockchain
-To use the extraction part of our project ([parse.py](src/parse.py)) a one must download corresponding part of the Bitcoin blockchain. If you want to give a quick try, you can download only first ~100 blocks really quick and this won't take a lot of disk space. However, if you want to parse the whole blockchain, you'll need about 430GB (as for 09.2022) of free space, the process takes 2-5 days of time. The downloading automatically starts, when you launch `bitcoind` daemon. To stop the downloading (and verification) of the blockchain, stop the daemon (`bitcoin-cli stop`) or block it's access to the internet. Because Bitcoin Core is a [full-node](https://bitcoin.org/en/full-node#what-is-a-full-node) Bitcoin client, it downloads the blockchain from the genesis block. Meaning that if a one wants to parse only the last block, they still have to download and validate the whole blockchain. However, in that case a one can delete unnecessary parts of the blockchain after the validation or use ["pruned mode"](https://bitcoin.org/en/full-node#reduce-storage) during the download.
+To use the extraction part of our project ([bitcoin_public_key_parser.py](src/bitcoin_public_key_parser.py)) a one must download corresponding part of the Bitcoin blockchain. If you want to give a quick try, you can download only first ~100 blocks really quick and this won't take a lot of disk space. However, if you want to parse the whole blockchain, you'll need about 430GB (as for 09.2022) of free space, the process takes 2-5 days of time. The downloading automatically starts, when you launch `bitcoind` daemon. To stop the downloading (and verification) of the blockchain, stop the daemon (`bitcoin-cli stop`) or block it's access to the internet. Because Bitcoin Core is a [full-node](https://bitcoin.org/en/full-node#what-is-a-full-node) Bitcoin client, it downloads the blockchain from the genesis block. Meaning that if a one wants to parse only the last block, they still have to download and validate the whole blockchain. However, in that case a one can delete unnecessary parts of the blockchain after the validation or use ["pruned mode"](https://bitcoin.org/en/full-node#reduce-storage) during the download.
 
 ### Actually starting
 1. Install the [prerequisites](#prerequisites)
@@ -160,7 +160,7 @@ To use the extraction part of our project ([parse.py](src/parse.py)) a one must 
 
         `no-internet "bitcoind -daemon"`
 
-        Now you are able to try some basic functionality of [parse.py](src/parse.py) without dowloading much stuff. This option is good for those, who just want to give a quick try of your project, but is not really suitable for those, who want to analyse the whole blockchain / who really care about data authentity.
+        Now you are able to try some basic functionality of [bitcoin_public_key_parser.py](src/bitcoin_public_key_parser.py) without dowloading much stuff. This option is good for those, who just want to give a quick try of your project, but is not really suitable for those, who want to analyse the whole blockchain / who really care about data authentity.
 
     3. As a third option, you might also normally run `bitcoind` (with no `-daemon` to see progress) and when enough blocks will be downloaded stop it and then re-run it without internet access.
 

@@ -1,13 +1,13 @@
 #!/bin/python3
 import sys
 sys.path.append("/home/xyakimo1/crocs/src") # add here path to the project's source directory
-from parse import Parser, RPC
+from bitcoin_public_key_parser import BitcoinPublicKeyParser, BitcoinRPC
 import pytest
 
-rpc = RPC()
-parser = Parser(rpc)
+rpc = BitcoinRPC()
+parser = BitcoinPublicKeyParser(rpc)
 
-def set_state(parser: Parser, txid, vin_vout, n):
+def set_state(parser: BitcoinPublicKeyParser, txid, vin_vout, n):
     parser.state["txid"] = txid
     parser.state["vin/vout"] = vin_vout
     parser.state["n"] = n

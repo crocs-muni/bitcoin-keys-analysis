@@ -6,13 +6,13 @@ from datetime import timedelta
 from threading import Thread
 from multiprocessing import Process, Pipe
 
-from parse import Parser, RPC
+from bitcoin_public_key_parser import BitcoinPublicKeyParser, BitcoinRPC
 
-class ContiniousParser:
+class BitcoinParserManager:
 
     logger = logging.getLogger(__name__)
 
-    file_handler = logging.FileHandler("logs/continious_parsing.log")
+    file_handler = logging.FileHandler("logs/bitcoin_parser_manager.log")
     file_handler.setLevel(logging.INFO)
     formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s | %(funcName)s | %(lineno)d")
     file_handler.setFormatter(formatter)
@@ -21,7 +21,7 @@ class ContiniousParser:
     logger.setLevel(logging.INFO)
 
 
-    rpc = RPC()
+    rpc = BitcoinRPC()
 
     state = \
     {
@@ -40,7 +40,7 @@ class ContiniousParser:
         "parsed": [],
         "target": []
     }
-    STATE_FILE = "state/parsing_state.json"
+    STATE_FILE = "state/bitcoin_parsing_state.json"
 
     # [[parser1, process1, pipe1_conn, task1, last_assigned_task_timestamp1], [parser2, process2, pipe2_conn, task2, .._timestamp2], ..]
     parsers = []
@@ -55,7 +55,7 @@ class ContiniousParser:
 
 
     def create_parser(self) -> list:
-        parser = Parser(self.rpc)
+        parser = BitcoinPublicKeyParser(self.rpc)
         parent_conn, child_conn = Pipe()
         process = Process(target=parser.process_blocks_from_pipe, args=(child_conn,))
         process.start()
@@ -71,7 +71,7 @@ class ContiniousParser:
             self.parsers = []
 
         if len(self.state["target"]) == 0:
-            self.logger.error("Did not start the parsers because target is empty! Set it with ContiniousParser.set_target().")
+            self.logger.error("Did not start the parsers because target is empty! Set it with Bitcoin.ParserManager.set_target().")
             return False
 
         self.generate_task_stack()
@@ -176,7 +176,7 @@ class ContiniousParser:
         for month in types.keys():
 
             if not month in self.state["tx_types"].keys():
-                self.state["tx_types"][month] = json.loads(json.dumps(Parser.INIT_TYPES_DICT)) # deep copy
+                self.state["tx_types"][month] = json.loads(json.dumps(BitcoinPublicKeyParser.INIT_TYPES_DICT)) # deep copy
 
             for tx_type, count in types[month].items():
                 self.state["tx_types"][month][tx_type] += count
@@ -310,4 +310,4 @@ class ContiniousParser:
 
 
 if __name__ == "__main__":
-    cp = ContiniousParser()
+    pm = BitcoinParserManager()

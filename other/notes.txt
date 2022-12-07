@@ -1,7 +1,5 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
-<TODO>:    Rename files: continious_parser.py, parser.py, data.txt -> data.json
-------------------------------------------------------------------------------------------------------------------------------
-<TODO2>:    Update README.md
+<TODO>:   Update README.md
 ------------------------------------------------------------------------------------------------------------------------------
