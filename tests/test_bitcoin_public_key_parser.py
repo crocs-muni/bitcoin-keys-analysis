@@ -6,6 +6,7 @@ import pytest
 
 rpc = BitcoinRPC()
 parser = BitcoinPublicKeyParser(rpc)
+parser.set_verbosity(True)
 
 def set_state(parser: BitcoinPublicKeyParser, txid, vin_vout, n):
     parser.state["txid"] = txid
@@ -771,6 +772,39 @@ def test_tx_types_process_outputs(txid: str, expected_types: dict):
     transaction = parser.rpc.getrawtransaction(txid, True)
     parser.process_outputs(transaction)
     assert parser.types == expected_types
+
+
+def test_not_verbose():
+    block_n = parser.rpc.getblockcount() // 4
+    assert block_n > 0
+    parser.set_verbosity(True)
+    parser.process_block(block_n)
+
+
+    expected_ecdsa_data = {block_n: set()} if parser.ecdsa_data != {} else {}
+    expected_unmatched_ecdsa_data = {block_n: set()} if parser.unmatched_ecdsa_data != {} else {}
+    expected_schnorr_data = {block_n: set()} if parser.schnorr_data != {} else {}
+    expected_unmatched_schnorr_data = {block_n: set()} if parser.unmatched_schnorr_data != {} else {}
+
+    for key in parser.ecdsa_data.keys():
+        expected_ecdsa_data[block_n].add(key)
+    for key in parser.unmatched_ecdsa_data.keys():
+        expected_unmatched_ecdsa_data[block_n].add(key)
+    for key in parser.schnorr_data.keys():
+        expected_schnorr_data[block_n].add(key)
+    for key in parser.unmatched_schnorr_data.keys():
+        expected_unmatched_schnorr_data[block_n].add(key)
+
+
+    parser.set_verbosity(False)
+    parser.process_block(block_n)
+
+    assert parser.ecdsa_data == expected_ecdsa_data
+    assert parser.unmatched_ecdsa_data == expected_unmatched_ecdsa_data
+    assert parser.schnorr_data == expected_schnorr_data
+    assert parser.unmatched_schnorr_data == expected_unmatched_schnorr_data
+
+    parser.set_verbosity(True)
 
 
 def test_flush_data_dict():

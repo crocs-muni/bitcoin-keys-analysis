@@ -41,7 +41,7 @@ class BitcoinPublicKeyParser:
 
     def __init__(self, BitcoinRPC: object):
         self.rpc = BitcoinRPC.rpc
-        self.state = {"txid": "", "vin/vout": "", "n": -1} # Holds info about what is currently being parsed.
+        self.state = {"block": -1, "txid": "", "vin/vout": "", "n": -1} # Holds info about what is currently being parsed.
         self.start_time = time.time()
 
         self.statistics = \
@@ -58,6 +58,9 @@ class BitcoinPublicKeyParser:
             "keys": 0
         }
         self.types = {}
+
+        self.verbose = False
+        self.logger.info(f"Verbosity has been set to {self.verbose}. Change it with BitcoinPublicKeyParser.set_verbosity().")
 
         self.ecdsa_data = {}
         self.unmatched_ecdsa_data = {}
@@ -134,6 +137,15 @@ class BitcoinPublicKeyParser:
         for key in self.statistics.keys():
             self.statistics[key] = 0
 
+    def set_verbosity(self, verbose: bool):
+        assert type(verbose) == bool
+        self.verbose = verbose
+        self.logger.info(f"Verbosity has been set to {self.verbose}. All dictionaries were reset.")
+
+        self.ecdsa_data = {}
+        self.unmatched_ecdsa_data = {}
+        self.schnorr_data = {}
+        self.unmatched_schnorr_data = {}
 
     """
         "Correct" keys and signatures functions
@@ -187,19 +199,51 @@ class BitcoinPublicKeyParser:
     """
 
     def add_key_to_data_dict(self, suspected_key, signature, data_dict):
-        if suspected_key not in data_dict.keys():
-            self.increment_key_count(suspected_key)
-            data_dict[suspected_key] = []
+        # Make me cleaner please!
         assert self.state["txid"] != "" and self.state["vin/vout"] != "" and self.state["n"] != -1
-        data_dict[suspected_key].append({'ID' : self.state["txid"], 'vin/vout': self.state["vin/vout"]+' '+str(self.state["n"]), 'signature' : signature})
+
+        if self.verbose:
+            if suspected_key not in data_dict.keys():
+                self.increment_key_count(suspected_key)
+                data_dict[suspected_key] = []
+            data_dict[suspected_key].append({'ID' : self.state["txid"], 'vin/vout': self.state["vin/vout"]+' '+str(self.state["n"]), 'signature' : signature})
+            return True
+
+        block = self.state["block"]
+        if block == -1:
+            self.logger.warning(f"It looks like you are using BitcoinPublicKeyParser.process_transaction() with parser's verbosity set to False. You might want to set it to True with BitcoinPublicKeyParser.set_verbosity().")
+
+        if block not in data_dict.keys():
+            data_dict[block] = set()
+
+        if suspected_key not in data_dict[block]:
+            self.increment_key_count(suspected_key)
+            data_dict[block].add(suspected_key)
+        return True
 
 
     def add_key_to_unmatched_data_dict(self, suspected_key, sigs, data_dict):
-        if suspected_key not in data_dict.keys():
-            self.increment_key_count(suspected_key)
-            data_dict[suspected_key] = []
+        # Make me cleaner please!
         assert self.state["txid"] != "" and self.state["vin/vout"] != "" and self.state["n"] != -1
-        data_dict[suspected_key].append({'ID' : self.state['txid'], 'vin/vout': self.state["vin/vout"]+' '+str(self.state["n"]), 'signatures' : sigs})
+
+        if self.verbose:
+            if suspected_key not in data_dict.keys():
+                self.increment_key_count(suspected_key)
+                data_dict[suspected_key] = []
+            data_dict[suspected_key].append({'ID' : self.state['txid'], 'vin/vout': self.state["vin/vout"]+' '+str(self.state["n"]), 'signatures' : sigs})
+            return True
+
+        block = self.state["block"]
+        if block == -1:
+            self.logger.warning(f"It looks like you are using BitcoinPublicKeyParser.process_transaction() with parser's verbosity set to False. You might want to set it to True with BitcoinPublicKeyParser.set_verbosity().")
+
+        if block not in data_dict.keys():
+            data_dict[block] = set()
+
+        if suspected_key not in data_dict[block]:
+            self.increment_key_count(suspected_key)
+            data_dict[block].add(suspected_key)
+        return True
 
 
     def data_dict_full(self, data_dict):
@@ -211,6 +255,11 @@ class BitcoinPublicKeyParser:
 
     # Flushes collected data to a JSON file.
     def flush_data_dict(self, file_name, data_dict):
+
+        if not self.verbose: # Change type from set to dict.
+            for block, key_set in data_dict.items():
+                data_dict[block] = list(key_set)
+
         with open(file_name, 'w') as outfile:
             json.dump(data_dict, outfile, indent = 2)
         data_dict = {}
@@ -634,6 +683,7 @@ class BitcoinPublicKeyParser:
 
     def process_block(self, n):
         self.statistics["blocks"] += 1
+        self.state["block"] = n
         block_hash = self.rpc.getblockhash(n)
         block_transactions = self.rpc.getblock(block_hash)['tx']
 
