@@ -8,19 +8,20 @@ import matplotlib.pyplot as plt     # transaction types graphs
 
 class BitcoinRPC:
     bitcoin.SelectParams("mainnet")
-    rpc = bitcoin.rpc.RawProxy() # RawProxy takes commands in hexa strings instead of structs, that is what we need
+    #  |  __init__(self, service_url=None, service_port=None, btc_conf_file=None, timeout=30, **kwargs)
+    rpc = bitcoin.rpc.RawProxy(btc_conf_file="/home/bitcoin-core/.bitcoin/bitcoin.conf") # RawProxy takes commands in hexa strings instead of structs, that is what we need
 
 class BitcoinPublicKeyParser:
 
     logger = logging.getLogger(__name__)
 
     file_handler = logging.FileHandler("logs/bitcoin_parser.log")
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(process)d | %(message)s | %(funcName)s | %(lineno)d")
     file_handler.setFormatter(formatter)
 
     logger.addHandler(file_handler)
-    logger.setLevel(logging.WARNING)
+    logger.setLevel(logging.INFO)
 
     """
         "Constants"
@@ -74,6 +75,13 @@ class BitcoinPublicKeyParser:
         self.failed_outputs_list = []
 
         self.LISTS = [(self.failed_inputs_list, "failed_inputs"), (self.failed_outputs_list, "failed_outputs")]
+
+        self.time_getblockhash = float(0)
+        self.time_getblock = float(0)
+        self.time_getrawtransaction = float(0)
+        self.n_getblockhash = 0
+        self.n_getblock = 0
+        self.n_getrawtransaction = 0
 
     """
         "Print" functions
@@ -624,7 +632,11 @@ class BitcoinPublicKeyParser:
     """
 
     def process_transaction(self, txid):
+        rpc_start_time = time.perf_counter()
         transaction = self.rpc.getrawtransaction(txid, True) # Getting transaction in verbose format
+        rpc_end_time = time.perf_counter()
+        self.time_getrawtransaction += rpc_end_time - rpc_start_time
+        self.n_getrawtransaction += 1
 
         self.state["txid"] = txid
         self.statistics["transactions"] += 1
@@ -682,14 +694,31 @@ class BitcoinPublicKeyParser:
             self.types[month][tx_type] += 1
 
     def process_block(self, n):
+        block_start_time = time.perf_counter()
+        keys_before = self.statistics["keys"]
+
         self.statistics["blocks"] += 1
         self.state["block"] = n
+
+        rpc_start_time = time.perf_counter()
         block_hash = self.rpc.getblockhash(n)
+        rpc_end_time = time.perf_counter()
+        self.time_getblockhash += rpc_end_time - rpc_start_time
+        self.n_getblockhash += 1
+
+
+        rpc_start_time = time.perf_counter()
         block_transactions = self.rpc.getblock(block_hash)['tx']
+        rpc_end_time = time.perf_counter()
+        self.time_getblock += rpc_end_time - rpc_start_time
+        self.n_getblock += 1
 
         for txid in block_transactions:
             self.process_transaction(txid)
 
+        keys_after = self.statistics["keys"]
+        block_end_time = time.perf_counter()
+        self.logger.info(f"Processed block {n} in {block_end_time - block_start_time} seconds. Speed: {int((keys_after - keys_before) / (block_end_time - block_start_time))} keys/sec. ")
 
     def process_blocks(self, start, end):
 
@@ -702,6 +731,7 @@ class BitcoinPublicKeyParser:
 
         self.flush_if_needed(n, True)
         self.print_statistics()
+        self.logger.info(f"RPC average response time: ({self.time_getblockhash / self.n_getblockhash}, {self.time_getblock / self.n_getblock}, {self.time_getrawtransaction / self.n_getrawtransaction}). Spent {self.time_getblockhash + self.time_getblock + self.time_getrawtransaction} seconds on RPC calls.")
 
     def process_blocks_from_pipe(self, pipe_conn):
         pipe_conn.send(([], {}, {}))  # initiates communication
