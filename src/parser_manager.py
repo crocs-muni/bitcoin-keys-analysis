@@ -22,6 +22,7 @@ class BitcoinParserManager:
 
 
     rpc = BitcoinRPC()
+    rpc_process = None
 
     state = \
     {
@@ -42,24 +43,38 @@ class BitcoinParserManager:
     }
     STATE_FILE = "state/bitcoin_parsing_state.json"
 
-    # [[parser1, process1, pipe1_conn, task1, last_assigned_task_timestamp1], [parser2, process2, pipe2_conn, task2, .._timestamp2], ..]
+    # [[parser1, process1], [parser2, process2], ..]
     parsers = []
-    task_stack = []
+
+    task_queue = Queue(1000000)
+    block_queue = Queue(10)
+    transaction_queue = Queue(10000)
+    progress_queue = Queue(20)
+    block_progress = {}
 
     def set_target(self, target: range) -> None:
         self.state["target"] = list(target)
 
-    def generate_task_stack(self):
-        self.task_stack = list(set(self.state["target"]) - set(self.state["parsed"]))
-        self.task_stack.reverse()
+    def start_calling_rpc(self) -> bool:
+        try:
+            for block_n in list(set(self.state["target"]) - set(self.state["parsed"])):
+                self.task_queue.put(block_n)
 
+            self.rpc_process = Process(target=rpc.transactions_to_queue, args=(transaction_queue, block_queue, task_queue,))
+            self.rpc_process.start()
+            self.logger.info(f"Successfully started RPC-calling process. It's pid: {self.rpc_process.pid}.")
+            return True
+        except:
+            self.logger.exception("Couldn't start calling RPC.")
+            return False
 
     def create_parser(self) -> list:
-        parser = BitcoinPublicKeyParser(self.rpc)
+        parser = BitcoinPublicKeyParser()
         parent_conn, child_conn = Pipe()
         process = Process(target=parser.process_blocks_from_pipe, args=(child_conn,))
         process.start()
-        return [parser, process, parent_conn, [], time.time()]
+        return [parser, process]
+
 
     def start_parsers(self, parser_count: int = os.cpu_count()) -> bool:
 
@@ -74,7 +89,9 @@ class BitcoinParserManager:
             self.logger.error("Did not start the parsers because target is empty! Set it with Bitcoin.ParserManager.set_target().")
             return False
 
-        self.generate_task_stack()
+        if not self.start_calling_rpc():
+            self.logger.error("Did not start the parsers because hadn't managed to start calling RPC.")
+            return False
 
         self.parsers = [self.create_parser() for i in range(parser_count)]
         pids = [parser[1].pid for parser in self.parsers]
@@ -82,91 +99,35 @@ class BitcoinParserManager:
 
         return True
 
-    def restart_parser(self, i: int, restart_timeout: int = 10) -> bool:
-        timed_out_parser = self.parsers.pop(i)
-        timed_out_task = timed_out_parser[3][:]
-        old_pid = timed_out_parser[1].pid if timed_out_parser[1].is_alive() else None
-        timed_out_parser[1].terminate()
 
-        self.task_stack += timed_out_task
-        self.logger.info(f"Put timed out task {timed_out_task} back to the task stack.")
-        new_parser = self.create_parser()
+    def track_progress(self) -> None:
 
-        if new_parser[1].is_alive():
-            self.parsers.append(new_parser)
-            self.logger.info(f"Successfully restarted parser (pid {old_pid}). New pid is {new_parser[1].pid}.")
-            return True
+        while not self.progress_queue.empty:
 
-        self.logger.error(f"Failed to restart timed out parser (pid {old_pid}) with task {timed_out_task}.")
-        return False
+            parser_echo = None
+            try:
+                parser_echo = self.progress_queue.get_nowait()
+            except:
+                break
+            assert type(parser_echo) != None
 
-    def refill_parsers(self, parser_count: int) -> bool:
-        self.logger.warning(f"We are lacking parsers! Current amount is {len(self.parsers)}, not {parser_count}.")
-        for i in range(parser_count - len(self.parsers)):
-
-            new_parser = self.create_parser()
-            if new_parser[1].is_alive():
-                self.parsers.append(new_parser)
-                self.logger.info(f"Succesfully added a new parser with pid {new_parser[1].pid}.")
-
-            else:
-                self.logger.warning(f"Failed to add a new parser.")
-
-        self.logger.info(f"Current amount of parsers: {len(self.parsers)}")
-        return len(self.parsers) == parser_count
+            self.update_block_progress(parser_echo[0])
+            self.update_statistics(parser_echo[1])
+            self.update_types(parser_echo[2])
+            self.update_block_state()
 
 
-    def assign_tasks(self) -> bool:
+    def update_block_progress(self, parserd_txid_list) -> None:
+        for txid in parsed_txid_list:
+            for block_n, txid_list in self.block_progress.items():
+                if txid in txid_list:
+                    txid_list.remove(txid)
+                    break
 
-        if len(self.parsers) == 0:
-            self.logger.error("No tasks were assigned because there are no parsers!")
-            return False
-
-        to_return = False
-        BATCH_SIZE = 1
-        PARSER_TIMEOUT = BATCH_SIZE * 30 # usually one block is parsed in ~7 seconds, so 30 can be assumed as timeout.
-        for i, parser in enumerate(self.parsers):
-
-            pipe_conn = parser[2]
-            if not pipe_conn.poll():
-                if time.time() - parser[4] > PARSER_TIMEOUT:
-                    self.logger.error(f"Parser (pid {parser[1].pid}) timed out.")
-                    self.restart_parser(i)
-                continue
-
-            parser_response = pipe_conn.recv()
-            if parser_response == 0: # Parser finished it's work
-                parser[1].join()
-                self.logger.info(f"Joined parser (pid {parser[1].pid}) with exitcode {parser[1].exitcode}")
-                self.parsers.remove(parser)
-                return False
-
-            assert parser[3] == parser_response[0]  # otherwise parsed what we wanted it to parse.
-            self.update_block_state(parser_response[0])
-            self.update_statistics(parser_response[1])
-            self.update_types(parser_response[2])
-
-            if len(self.task_stack) == 0:
-                self.logger.info(f"No tasks were assigned because the task stack is empty! {len(self.parsers)} parsers still working.")
-                pipe_conn.send(0)
-                return False
-
-            if len(self.task_stack) >= BATCH_SIZE:
-                task = [self.task_stack.pop() for i in range(BATCH_SIZE)]
-            else:
-                task = self.task_stack[:]
-                self.task_stack = []
-
-            pipe_conn.send(task)
-            parser[3] = task
-            parser[4] = time.time()
-            to_return = True
-
-        return to_return
-
-
-    def update_block_state(self, completed_task: set) -> None:
-        self.state["parsed"] += completed_task
+    def update_block_state(self) -> None:
+        for block_n, txid_list in self.block_progress.items():
+            if len(txid_list) == 0:
+                self.state["parsed"].append(block_n)
 
     def update_statistics(self, statistics: dict) -> None:
         for key, value in statistics.items():
@@ -197,6 +158,9 @@ class BitcoinParserManager:
             parser[1].join()
             self.logger.info(f"Joined parser (pid {parser[1].pid}) with exitcode {parser[1].exitcode}")
         self.parsers = []
+        self.rpc_process.join()
+        self.logger.info(f"Joined RPC-calling process (pid {seld.rpc_process.pid}) with exitcode {self.rpc_process.exitcode}.")
+        self.rpc_process = None
 
         print("-------[SUCCESS]-------")
         self.print_state()
@@ -209,7 +173,7 @@ class BitcoinParserManager:
                 json.dump(self.state, file, indent = 2)
 
         except Exception as e:
-            self.logger.error("Could not flush the state to a file.")
+            self.logger.exception("Could not flush the state to a file.")
             return False
 
         self.logger.info("Flushed the state to the file.")
@@ -222,27 +186,11 @@ class BitcoinParserManager:
                 self.state = json.load(file)
 
         except Exception as e:
-            self.logger.error("Could not restrore the state from a file.")
+            self.logger.exception("Could not restrore the state from a file.")
             return False
 
         self.logger.info("Restored state from the file.")
         return True
-
-
-    def recover(self, parser_count: int = os.cpu_count()) -> bool:
-        self.logger.warning("Started recovery.")
-        RECOVERY_TRIES = 5
-
-        for i in range(RECOVERY_TRIES):
-
-            if self.restore_state_from_file() and self.start_parsers(parser_count):
-                self.generate_task_stack()
-                self.logger.info("Successfull recovery.")
-                return True
-            time.sleep(10)
-
-        self.logger.error("Failed recovery.")
-        return False
 
 
     def send_email_on_event(self, event: str) -> bool:
@@ -261,52 +209,33 @@ class BitcoinParserManager:
             self.logger.error("Could not start parsers!")
             return False
 
-        FAILURE_TOLERANCE = 3
-        for i in range(FAILURE_TOLERANCE + 1): # parse (1), recover (2), repeat
+        start_timestamp = time.time()
+        try:
+            while True:
 
-            start_timestamp = time.time()
-            try:
-                while True: #(1)
+                self.track_progress()
 
-                    assigned_some_tasks = self.assign_tasks()
+                if set(self.state["target"]) == set(self.state["parsed"]):
+                    self.print_speed(start_timestamp)
+                    self.all_tasks_done()
+                    return True
 
-                    if not assigned_some_tasks and set(self.state["target"]) == set(self.state["parsed"]):
-                        self.all_tasks_done()
-                        return True
+                # Backup state to file every 5 minutes
+                if int(time.time()) % (60*5) == 0:
+                    self.flush_state_to_file()
 
-                    # Backup state to file every 5 minutes
-                    if int(time.time()) % (60*5) == 0:
-                        self.flush_state_to_file()
+                # Print progress every 10 minutes
+                if int(time.time()) % (60*10) == 0:
+                    self.print_speed(start_timestamp)
 
-                    # Print progress every 10 minutes
-                    if int(time.time()) % (60*10) == 0:
-                        self.print_speed(start_timestamp)
-
-                    if len(self.parsers) < parser_count and len(self.task_stack) > 0:
-                        self.refill_parsers(parser_count)
-
-                    time.sleep(1)
-
-            except Exception as e: #(2)
-
+            except Exception as e:
                 self.logger.exception("Something went wrong. We are outside `parse` loop.")
 
-                if i == FAILURE_TOLERANCE:
-                    break
-
-                if not self.recover(parser_count):
-                    self.send_email_on_event("recover_failure")
-                    return False
-
-        self.logger.critical("Failure tolerance exceeded (failed {FAILURE_TOLERANCE} times) - exiting the script.")
         for parser in self.parsers:
             parser[1].terminate()
-            self.logger.warning(f"Teminated parser (pid {parser[1].pid}) because the script exceeded failure tolerance.")
+            self.logger.warning(f"Teminated parser (pid {parser[1].pid}) because an unexpected error happened.")
+        self.logger.critical("Stoped parsing.")
         return False
-
-    def parse_forever():
-        # TODO
-        pass
 
 
 if __name__ == "__main__":
