@@ -4,7 +4,7 @@ import os, sys, time, traceback
 import json, logging
 from datetime import timedelta
 from threading import Thread
-from multiprocessing import Process, Pipe
+from multiprocessing import Process, Queue
 
 from bitcoin_public_key_parser import BitcoinPublicKeyParser, BitcoinRPC
 
@@ -13,12 +13,12 @@ class BitcoinParserManager:
     logger = logging.getLogger(__name__)
 
     file_handler = logging.FileHandler("logs/bitcoin_parser_manager.log")
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s | %(funcName)s | %(lineno)d")
     file_handler.setFormatter(formatter)
 
     logger.addHandler(file_handler)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
 
     rpc = BitcoinRPC()
@@ -46,7 +46,7 @@ class BitcoinParserManager:
     # [[parser1, process1], [parser2, process2], ..]
     parsers = []
 
-    task_queue = Queue(1000000)
+    task_queue = Queue()
     block_queue = Queue(10)
     transaction_queue = Queue(10000)
     progress_queue = Queue(20)
@@ -60,7 +60,7 @@ class BitcoinParserManager:
             for block_n in list(set(self.state["target"]) - set(self.state["parsed"])):
                 self.task_queue.put(block_n)
 
-            self.rpc_process = Process(target=rpc.transactions_to_queue, args=(transaction_queue, block_queue, task_queue,))
+            self.rpc_process = Process(target=self.rpc.transactions_to_queue, args=(self.transaction_queue, self.block_queue, self.task_queue,))
             self.rpc_process.start()
             self.logger.info(f"Successfully started RPC-calling process. It's pid: {self.rpc_process.pid}.")
             return True
@@ -70,8 +70,7 @@ class BitcoinParserManager:
 
     def create_parser(self) -> list:
         parser = BitcoinPublicKeyParser()
-        parent_conn, child_conn = Pipe()
-        process = Process(target=parser.process_blocks_from_pipe, args=(child_conn,))
+        process = Process(target=parser.process_transactions_from_queue, args=(self.transaction_queue, self.progress_queue,))
         process.start()
         return [parser, process]
 
@@ -93,6 +92,10 @@ class BitcoinParserManager:
             self.logger.error("Did not start the parsers because hadn't managed to start calling RPC.")
             return False
 
+        while self.transaction_queue.empty():
+            self.logger.warning("Still no transactions in the transaction queue.")
+            time.sleep(0.5)
+
         self.parsers = [self.create_parser() for i in range(parser_count)]
         pids = [parser[1].pid for parser in self.parsers]
         self.logger.info(f"Successfully started {parser_count} parsers. Their pids are: {pids}")
@@ -102,7 +105,22 @@ class BitcoinParserManager:
 
     def track_progress(self) -> None:
 
-        while not self.progress_queue.empty:
+        while not self.block_queue.empty():
+            self.logger.debug("The block queue not empty.")
+            block = None
+            try:
+                block = self.block_queue.get_nowait()
+            except:
+                break
+
+            assert type(block) == dict
+            assert "tx" in block.keys()
+            assert type(block["tx"]) == list
+            self.logger.debug(f"Got block {block['height']} from the block queue.")
+            self.block_progress[block["height"]] = block["tx"]
+
+
+        while not self.progress_queue.empty():
 
             parser_echo = None
             try:
@@ -110,6 +128,7 @@ class BitcoinParserManager:
             except:
                 break
             assert type(parser_echo) != None
+            self.logger.debug(f"Parser's echo: {parser_echo}.")
 
             self.update_block_progress(parser_echo[0])
             self.update_statistics(parser_echo[1])
@@ -117,16 +136,18 @@ class BitcoinParserManager:
             self.update_block_state()
 
 
-    def update_block_progress(self, parserd_txid_list) -> None:
+    def update_block_progress(self, parsed_txid_list) -> None:
+        self.logger.debug(f"Block_progress before: {self.block_progress}.")
         for txid in parsed_txid_list:
             for block_n, txid_list in self.block_progress.items():
                 if txid in txid_list:
                     txid_list.remove(txid)
                     break
+        self.logger.debug(f"Block_progress after: {self.block_progress}.")
 
     def update_block_state(self) -> None:
         for block_n, txid_list in self.block_progress.items():
-            if len(txid_list) == 0:
+            if len(txid_list) == 0 and block_n not in self.state["parsed"]:
                 self.state["parsed"].append(block_n)
 
     def update_statistics(self, statistics: dict) -> None:
@@ -159,7 +180,7 @@ class BitcoinParserManager:
             self.logger.info(f"Joined parser (pid {parser[1].pid}) with exitcode {parser[1].exitcode}")
         self.parsers = []
         self.rpc_process.join()
-        self.logger.info(f"Joined RPC-calling process (pid {seld.rpc_process.pid}) with exitcode {self.rpc_process.exitcode}.")
+        self.logger.info(f"Joined RPC-calling process (pid {self.rpc_process.pid}) with exitcode {self.rpc_process.exitcode}.")
         self.rpc_process = None
 
         print("-------[SUCCESS]-------")
@@ -193,11 +214,6 @@ class BitcoinParserManager:
         return True
 
 
-    def send_email_on_event(self, event: str) -> bool:
-        #TODO
-        pass
-
-
     """
         "Main" functions
     """
@@ -228,8 +244,8 @@ class BitcoinParserManager:
                 if int(time.time()) % (60*10) == 0:
                     self.print_speed(start_timestamp)
 
-            except Exception as e:
-                self.logger.exception("Something went wrong. We are outside `parse` loop.")
+        except Exception as e:
+            self.logger.exception("Something went wrong. We are outside `parse` loop.")
 
         for parser in self.parsers:
             parser[1].terminate()

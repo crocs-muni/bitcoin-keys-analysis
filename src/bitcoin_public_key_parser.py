@@ -5,28 +5,29 @@ import time, os                     # BitcoinPublicKeyParser.print_statistics()
 import logging                      # logging
 from datetime import datetime       # transaction types graphs
 import matplotlib.pyplot as plt     # transaction types graphs
+import queue
 from multiprocessing import Queue
 
 class BitcoinRPC:
     bitcoin.SelectParams("mainnet")
     #  |  __init__(self, service_url=None, service_port=None, btc_conf_file=None, timeout=30, **kwargs)
-    rpc = bitcoin.rpc.RawProxy(btc_conf_file="/home/bitcoin-core/.bitcoin/bitcoin.conf") # RawProxy takes commands in hexa strings instead of structs, that is what we need
+    rpc = bitcoin.rpc.RawProxy() # RawProxy takes commands in hexa strings instead of structs, that is what we need
 
-    def transactions_to_queue(transaction_queue_out, target_queue_out, block_queue_in):
+    def transactions_to_queue(self, transaction_queue, block_queue, task_queue):
         while True:
             try:
-                block_n = block_queue_in.get_nowait()
+                block_n = task_queue.get_nowait()
             except queue.Empty:
                 return True
 
             assert type(block_n) == int
-            block_hash = rpc.getblockhash(block_n)
-            block = rpc.getblock(block_hash)
-            target_queue_out.put(block)
+            block_hash = self.rpc.getblockhash(block_n)
+            block = self.rpc.getblock(block_hash)
+            block_queue.put(block)
 
             for transaction_hash in block["tx"]:
-                transaction = rpc.getrawtransaction(transaction_hash, True)
-                transaction_queue_out.put(transaction)
+                transaction = self.rpc.getrawtransaction(transaction_hash, True)
+                transaction_queue.put((block_n, transaction))
 
 class BitcoinPublicKeyParser:
 
@@ -58,7 +59,7 @@ class BitcoinPublicKeyParser:
     INIT_TYPES_DICT = {'nonstandard': 0, 'pubkey': 0, 'pubkeyhash': 0, 'scripthash': 0, 'multisig': 0, 'nulldata': 0, 'witness_v0_scripthash': 0, 'witness_v0_keyhash': 0, 'witness_v1_taproot': 0, 'witness_unknown': 0}
 
     def __init__(self, BitcoinRPC: object = None):
-        self.rpc = BitcoinRPC.rpc
+        self.rpc = None if BitcoinRPC == None else BitcoinRPC.rpc
         self.state = {"block": -1, "txid": "", "vin/vout": "", "n": -1} # Holds info about what is currently being parsed.
         self.start_time = time.time()
 
@@ -298,15 +299,22 @@ class BitcoinPublicKeyParser:
     # This functions goes trough all data dictionaries and checks, whether they need to be flushed.
     # Argument <exception> is a bool value to force flushing: for example, at the very end of the script.
     def flush_if_needed(self, n, exception, pid=0):
+        to_return = False
         for dict_tup in self.DICTS: 
             if self.data_dict_full(dict_tup[0]) or (exception and dict_tup[0] != {}):
                 file_name = f"gathered-data/{dict_tup[1]}_{str(n)}_{str(pid)}.json"
                 self.flush_data_dict(file_name, dict_tup[0])
+                self.logger.info(f"Flushed to 'gathered-data/{dict_tup[1]}_{str(n)}_{str(pid)}.json'")
+                to_return = True
 
         for list_tup in self.LISTS:
             if self.data_dict_full(list_tup[0]) or (exception and list_tup[0] != []):
                 file_name = f"gathered-data/{list_tup[1]}_{str(n)}_{pid}.json"
                 self.flush_data_list(file_name, list_tup[0])
+                self.logger.info(f"Flushed to 'gathered-data/{list_tup[1]}_{str(n)}_{pid}.json'")
+                to_return = True
+
+        return to_return
 
 
     """
@@ -736,46 +744,51 @@ class BitcoinPublicKeyParser:
         block_end_time = time.perf_counter()
         self.logger.info(f"Processed block {n} in {block_end_time - block_start_time} seconds. Speed: {int((keys_after - keys_before) / (block_end_time - block_start_time))} keys/sec. ")
 
-    def process_blocks(self, start, end):
+    def process_block_range(self, range_to_parse):
 
-        for n in range(start, end):
+        for n in range_to_parse:
             self.process_block(n)
             self.flush_if_needed(n, False)
 
-            if n % 10 == 0:
-                self.print_speed()
+            #self.print_speed()
 
         self.flush_if_needed(n, True)
         self.print_statistics()
-        self.logger.info(f"RPC average response time: ({self.time_getblockhash / self.n_getblockhash}, {self.time_getblock / self.n_getblock}, {self.time_getrawtransaction / self.n_getrawtransaction}). Spent {self.time_getblockhash + self.time_getblock + self.time_getrawtransaction} seconds on RPC calls.")
 
     def process_transactions_from_queue(self, transaction_queue, progress_queue):
         TASK_TIMEOUT = 1
+        BATCH_SIZE = 100
         parsed_batch = []
-        while True:
 
+        assert not transaction_queue.empty()
+        self.logger.info("The transaction queue is not empty.")
+
+        while True:
             transaction = None
             try:
-                transaction = transaction.get(True, TASK_TIMEOUT)
+                block_n, transaction = transaction_queue.get(True, TASK_TIMEOUT)
             except queue.Empty:
                 self.logger.warning(f"Stop working because didn't get any task in {TASK_TIMEOUT} seconds.")
                 if parsed_batch != []:
                     to_put = (parsed_batch, self.statistics, self.types)
                     progress_queue.put(to_put)
+                    self.flush_if_needed(self.state["block"], True, os.getpid())
                 return None
 
+            self.state["block"] = block_n
             self.state["txid"] = transaction["txid"]
             self.statistics["transactions"] += 1
 
             self.process_inputs(transaction)
             self.process_outputs(transaction)
             self.logger.info(f"Parsed transaction {transaction['txid']}.")
-            parsed_batch.append(transaction['txid'])
+            parsed_batch.append(self.state["txid"])
 
-            if len(parsed_batch) < 100:
+            if len(parsed_batch) < BATCH_SIZE:
                 continue
 
-            self.flush_if_needed(n, True, os.getpid())
+            self.flush_if_needed(self.state["block"], False, os.getpid())
+
             to_put = (parsed_batch, self.statistics, self.types)
             progress_queue.put(to_put)
             parsed_batch = []
