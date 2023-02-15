@@ -6,7 +6,9 @@ import logging                      # logging
 from datetime import datetime       # transaction types graphs
 import matplotlib.pyplot as plt     # transaction types graphs
 import queue
+import sys
 from multiprocessing import Queue
+
 
 class BitcoinRPC:
     bitcoin.SelectParams("mainnet")
@@ -40,6 +42,7 @@ class BitcoinPublicKeyParser:
 
     logger.addHandler(file_handler)
     logger.setLevel(logging.INFO)
+
 
     """
         "Constants"
@@ -172,6 +175,8 @@ class BitcoinPublicKeyParser:
         self.unmatched_ecdsa_data = {}
         self.schnorr_data = {}
         self.unmatched_schnorr_data = {}
+        self.DICTS = [(self.ecdsa_data, "ecdsa_data"), (self.unmatched_ecdsa_data, "unmatched_ecdsa_data"),\
+                      (self.schnorr_data, "schnorr_data"), (self.unmatched_schnorr_data, "unmatched_schnorr_data")]
 
     """
         "Correct" keys and signatures functions
@@ -281,20 +286,26 @@ class BitcoinPublicKeyParser:
 
     # Flushes collected data to a JSON file.
     def flush_data_dict(self, file_name, data_dict):
-
         if not self.verbose: # Change type from set to dict.
             for block, key_set in data_dict.items():
                 data_dict[block] = list(key_set)
 
-        with open(file_name, 'w') as outfile:
-            json.dump(data_dict, outfile, indent = 2)
-        data_dict = {}
+        try:
+            with open(file_name, 'w') as outfile:
+                json.dump(data_dict, outfile, indent = 2)
+            data_dict = {}
+        except:
+            self.logger.exception("Couldn't flush a dictionary to file.")
+
 
     def flush_data_list(self, file_name, data_list):
-        with open(file_name, 'w') as outfile:
-            for line in data_list:
-                outfile.write(line + '\n')
-        data_list = []
+        try:
+            with open(file_name, 'w') as outfile:
+                for line in data_list:
+                    outfile.write(line + '\n')
+            data_list = []
+        except:
+            self.logger.exception("Couldn't flush a list to file.")
 
     # This functions goes trough all data dictionaries and checks, whether they need to be flushed.
     # Argument <exception> is a bool value to force flushing: for example, at the very end of the script.
@@ -760,7 +771,11 @@ class BitcoinPublicKeyParser:
         BATCH_SIZE = 100
         parsed_batch = []
 
-        assert not transaction_queue.empty()
+        try:
+            assert not transaction_queue.empty()
+        except AssertionError as err:
+            self.logger.warning("The transaction queue is empty. Bailing.")
+            return None
         self.logger.info("The transaction queue is not empty.")
 
         while True:

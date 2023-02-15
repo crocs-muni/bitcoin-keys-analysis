@@ -8,6 +8,7 @@ from multiprocessing import Process, Queue
 
 from bitcoin_public_key_parser import BitcoinPublicKeyParser, BitcoinRPC
 
+
 class BitcoinParserManager:
 
     logger = logging.getLogger(__name__)
@@ -19,7 +20,6 @@ class BitcoinParserManager:
 
     logger.addHandler(file_handler)
     logger.setLevel(logging.DEBUG)
-
 
     rpc = BitcoinRPC()
     rpc_process = None
@@ -166,6 +166,9 @@ class BitcoinParserManager:
 
     def print_speed(self, start_timestamp) -> None:
         time_diff = int(time.time() - start_timestamp)
+        if time_diff == 0:
+            time_diff = 1   # avoid devision by zero
+
         self.logger.info(f"Running for {str(timedelta(seconds=time_diff))} and gathered {self.state['keys']} keys ({self.state['keys'] // time_diff} keys/sec).")
 
     def print_state(self) -> None:
@@ -195,6 +198,7 @@ class BitcoinParserManager:
 
         except Exception as e:
             self.logger.exception("Could not flush the state to a file.")
+            self.logger.warning(f"State: {self.state}")
             return False
 
         self.logger.info("Flushed the state to the file.")
@@ -236,12 +240,9 @@ class BitcoinParserManager:
                     self.all_tasks_done()
                     return True
 
-                # Backup state to file every 5 minutes
-                if int(time.time()) % (60*5) == 0:
+                # Backup state to file every 100k keys.
+                if self.state["keys"] % 100000 == 0:
                     self.flush_state_to_file()
-
-                # Print progress every 10 minutes
-                if int(time.time()) % (60*10) == 0:
                     self.print_speed(start_timestamp)
 
         except Exception as e:
