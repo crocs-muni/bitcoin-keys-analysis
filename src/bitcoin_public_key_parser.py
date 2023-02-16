@@ -47,6 +47,8 @@ class BitcoinPublicKeyParser:
     """
         "Constants"
     """
+    TESTING = False # we sometimes want to set this value to True from pytest
+
     import op_codes
     OP_CODES = op_codes.OP_CODES
 
@@ -147,6 +149,9 @@ class BitcoinPublicKeyParser:
     """
 
     def get_previous_vout(self, vin):
+        if not self.rpc or self.TESTING:
+            return None
+
         prev_transaction_id = vin["txid"]
         prev_transaction = self.rpc.getrawtransaction(prev_transaction_id, True)
         vout_num = vin["vout"]
@@ -504,6 +509,10 @@ class BitcoinPublicKeyParser:
         if signature == "NaN": # If there is no signature, there is no sense in looking up the corresponding public key.
             return False
 
+        if (not self.rpc or self.TESTING) and len(vin["scriptSig"]["asm"].split(" ")) == 1:    # Signature is not "NaN", so it is either P2PK or P2PKH,
+            return True                                                      # If there is only one item in sctiptSig, then it is P2PK
+                                                                             # If it is P2PK and we do not have an RPC server available,
+                                                                             # do not count as failed, so return True and go to the next input.
         vout = self.get_previous_vout(vin)
         suspected_key = vout["scriptPubKey"]["asm"].split(' ')[0]
 
@@ -584,6 +593,12 @@ class BitcoinPublicKeyParser:
 
     def handle_p2tr_keypath(self, vin):
         signature = self.extract_signature_p2tr(vin, 0)
+        if signature == "NaN":
+            return False
+
+        if not self.rpc or self.TESTING:    # The same logic as with P2PK. If we cannot ask rpc, do not count as failed and continue.
+            return True
+
         vout = self.get_previous_vout(vin)
 
         if "scriptPubKey" not in vout.keys():

@@ -19,7 +19,7 @@ class BitcoinParserManager:
     file_handler.setFormatter(formatter)
 
     logger.addHandler(file_handler)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     rpc = BitcoinRPC()
     rpc_process = None
@@ -53,10 +53,15 @@ class BitcoinParserManager:
     block_progress = {}
 
     def set_target(self, target: range) -> None:
-        self.state["target"] = list(target)
+        self.state["target"] += list(target)                   # Appending new tasks, but no duplicates (list(set(..)))
+        self.state["target"] = list(set(self.state["target"])) # not overwriting the previous target, because it would break everything.
+        self.logger.debug(f"TARGET: {self.state['target']}.")
 
     def start_calling_rpc(self) -> bool:
         try:
+            while not self.task_queue.empty():  # Emtpy the task queue first
+                self.task_queue.get()
+
             for block_n in list(set(self.state["target"]) - set(self.state["parsed"])):
                 self.task_queue.put(block_n)
 
@@ -94,6 +99,11 @@ class BitcoinParserManager:
 
         while self.transaction_queue.empty():
             self.logger.warning("Still no transactions in the transaction queue.")
+            try:
+                assert self.rpc_process.is_alive()
+            except:
+                self.logger.error("RPC-calling process was not alive. Restarting it.")
+                assert self.start_calling_rpc()
             time.sleep(0.5)
 
         self.parsers = [self.create_parser() for i in range(parser_count)]
@@ -106,8 +116,6 @@ class BitcoinParserManager:
     def track_progress(self) -> None:
 
         while not self.block_queue.empty():
-            self.logger.debug("The block queue not empty.")
-            block = None
             try:
                 block = self.block_queue.get_nowait()
             except:
@@ -122,7 +130,6 @@ class BitcoinParserManager:
 
         while not self.progress_queue.empty():
 
-            parser_echo = None
             try:
                 parser_echo = self.progress_queue.get_nowait()
             except:
@@ -137,13 +144,11 @@ class BitcoinParserManager:
 
 
     def update_block_progress(self, parsed_txid_list) -> None:
-        self.logger.debug(f"Block_progress before: {self.block_progress}.")
         for txid in parsed_txid_list:
             for block_n, txid_list in self.block_progress.items():
                 if txid in txid_list:
                     txid_list.remove(txid)
                     break
-        self.logger.debug(f"Block_progress after: {self.block_progress}.")
 
     def update_block_state(self) -> None:
         for block_n, txid_list in self.block_progress.items():
@@ -230,6 +235,7 @@ class BitcoinParserManager:
             return False
 
         start_timestamp = time.time()
+        last_flushed = time.time()
         try:
             while True:
 
@@ -240,9 +246,10 @@ class BitcoinParserManager:
                     self.all_tasks_done()
                     return True
 
-                # Backup state to file every 100k keys.
-                if self.state["keys"] % 100000 == 0:
+                # Backup state to file every 10m
+                if time.time() - last_flushed > 10*60:
                     self.flush_state_to_file()
+                    last_flushed = time.time()
                     self.print_speed(start_timestamp)
 
         except Exception as e:

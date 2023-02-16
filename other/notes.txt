@@ -1,7 +1,7 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
-<TODO>:   Logging in test_parser_manager.py?
+<TODO>:   Real-time parsing.
 ------------------------------------------------------------------------------------------------------------------------------
 <TODO>:   Don't forget to change log level to info.
 ------------------------------------------------------------------------------------------------------------------------------

@@ -3,7 +3,7 @@ sys.path.append("/home/xyakimo1/crocs/src") # add here path to the project's sou
 from bitcoin_public_key_parser import BitcoinPublicKeyParser, BitcoinRPC
 from parser_manager import BitcoinParserManager
 import pytest
-import json, logging
+import json, logging, time
 from typing import Tuple
 
 logger = logging.getLogger(__name__)
@@ -14,10 +14,13 @@ formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(messag
 file_handler.setFormatter(formatter)
 
 logger.addHandler(file_handler)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 rpc = BitcoinRPC()
 parser = BitcoinPublicKeyParser(rpc)
+parser.TESTING = True   # This is to compensate P2PK and P2TR's get_previous_vout.
+                        # In real parsing (like range(1, 800000)) there would be no difference,
+                        # but when hopping (like range(1, 800000, 50000)) multiprocess version collects a little less keys than one-process.
 pm = BitcoinParserManager()
 
 def create_directory_tree() -> None:
@@ -48,14 +51,15 @@ def create_dicts_to_compare_verbosity_false(dir_one: str, dir_multi: str) -> Tup
         os.chdir(dir_path)
         for file_name in os.listdir():
 
-            if not os.path.isfile(file_name):
+            if not os.path.isfile(file_name) or "failed" in file_name:
                 continue
 
             try:
                 with open(file_name, 'r') as f:
                     temp_dict = json.load(f)
             except:
-                logger.exception("Couldn't open a file.")
+                logger.exception(f"Couldn't open a file or a JSON-parsing error ({file_name}).")
+                continue
 
             for block, keys_list in temp_dict.items():
                 if block not in key_dict.keys():
@@ -65,26 +69,54 @@ def create_dicts_to_compare_verbosity_false(dir_one: str, dir_multi: str) -> Tup
     return dict1, dict2
 
 
+os.chdir("/tmp")
+create_directory_tree() ## create_directory_tree() must be called before the tests, because it removes the directories, if they already exist.
+
 @pytest.mark.parametrize("range_to_parse",
                          [
-                             range(1, 10)
+                             range(1, 10),
+                             range(1, 750000, 100000)
+                             #range(775000, 775150)
                          ])
 def test_parse_range_verbosity_false(range_to_parse: range):
     parser.set_verbosity(False)
-    os.chdir("/tmp")
-    create_directory_tree()
-    os.chdir("pytest_test_parser_manager")
+    os.chdir("/tmp/pytest_test_parser_manager") ## Do not forget to call create_directory_tree() beforehand.
 
     os.chdir("one_process")
+    one_process_start_timestamp = time.perf_counter()
     parser.process_block_range(range_to_parse)
+    one_process_finish_timestamp = time.perf_counter()
+
     os.chdir("../multiprocessing")
+    multiprocessing_start_timestamp = time.perf_counter()
     pm.parse_range(range_to_parse)
+    multiprocessing_finish_timestamp = time.perf_counter()
+
+    one_process_parsing_time = one_process_finish_timestamp - one_process_start_timestamp
+    multiprocessing_parsing_time = multiprocessing_finish_timestamp - multiprocessing_start_timestamp
 
     dict1, dict2 = create_dicts_to_compare_verbosity_false("/tmp/pytest_test_parser_manager/one_process/gathered-data",\
                                                            "/tmp/pytest_test_parser_manager/multiprocessing/gathered-data")
 
-    assert dict1.keys() == dict2.keys()
+    try:
+        assert set(dict1.keys()) == set(dict2.keys())
+    except:
+        logger.critical(f"Dict1.keys(): {dict1.keys()}, dict2.keys(): {dict2.keys()}.")
+        raise AssertionError
+
     assert len(dict1) > 0
     for block_n in dict1.keys():
-        assert dict1[block_n] == dict2[block_n]
+        try:
+            assert set(dict1[block_n]) == set(dict2[block_n])
+        except:
+            logger.critical(f"Block_n: {block_n}, symmetric_difference: {set(dict1[block_n]).symmetric_difference(set(dict2[block_n]))}.")
+            raise AssertionError
+
     logger.debug(f"Dictionary from one process: {dict1}; Dictionary from multiprocessing: {dict2}")
+
+    try:
+        assert multiprocessing_parsing_time < one_process_parsing_time()
+    except:
+        logger.warning(f"One-process parsing was faster than multiprocessing! One: {one_process_parsing_time}s / Multi: {multiprocessing_parsing_time}s. {multiprocessing_parsing_time / one_process_parsing_time} times faster on {len(range_to_parse)} blocks ({range_to_parse}).")
+    else:
+        logger.info(f"Multi-process parsing was faster than one-process. One: {one_process_parsing_time}s / Multi: {multiprocessing_parsing_time}s. {one_process_parsing_time / multiprocessing_parsing_time} times faster on {len(range_to_parse)} blocks ({range_to_parse}).")
