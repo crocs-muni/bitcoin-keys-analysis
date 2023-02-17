@@ -1,6 +1,12 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
+<TODO>:   Dump statistics and types to the file.
+------------------------------------------------------------------------------------------------------------------------------
+<TODO>:   Call RPC in multiple processes.
+------------------------------------------------------------------------------------------------------------------------------
+<TODO>:   Parsers distribution? In other word find optimal amount of parsers.
+------------------------------------------------------------------------------------------------------------------------------
 <TODO>:   Real-time parsing.
 ------------------------------------------------------------------------------------------------------------------------------
 <TODO>:   Don't forget to change log level to info.

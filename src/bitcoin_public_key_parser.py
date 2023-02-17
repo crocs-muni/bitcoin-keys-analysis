@@ -234,39 +234,23 @@ class BitcoinPublicKeyParser:
         "Data" handling functions
     """
 
-    def add_key_to_data_dict(self, suspected_key, signature, data_dict):
-        # Make me cleaner please!
+    def add_key_to_data_dict(self, suspected_key, signature, signature_list, data_dict):
         assert self.state["txid"] != "" and self.state["vin/vout"] != "" and self.state["n"] != -1
 
         if self.verbose:
             if suspected_key not in data_dict.keys():
                 self.increment_key_count(suspected_key)
                 data_dict[suspected_key] = []
-            data_dict[suspected_key].append({'ID' : self.state["txid"], 'vin/vout': self.state["vin/vout"]+' '+str(self.state["n"]), 'signature' : signature})
-            return True
 
-        block = self.state["block"]
-        if block == -1:
-            self.logger.warning(f"It looks like you are using BitcoinPublicKeyParser.process_transaction() with parser's verbosity set to False. You might want to set it to True with BitcoinPublicKeyParser.set_verbosity().")
+            to_append = {'ID' : self.state["txid"], 'vin/vout': f"{self.state['vin/vout']} {str(self.state['n'])}"}
+            if type(signature) == str:
+                assert signature_list == None
+                to_append['signature'] = signature
+            if type(signature_list) == list:
+                assert signature == None
+                to_append['signatures'] = signature_list
 
-        if block not in data_dict.keys():
-            data_dict[block] = set()
-
-        if suspected_key not in data_dict[block]:
-            self.increment_key_count(suspected_key)
-            data_dict[block].add(suspected_key)
-        return True
-
-
-    def add_key_to_unmatched_data_dict(self, suspected_key, sigs, data_dict):
-        # Make me cleaner please!
-        assert self.state["txid"] != "" and self.state["vin/vout"] != "" and self.state["n"] != -1
-
-        if self.verbose:
-            if suspected_key not in data_dict.keys():
-                self.increment_key_count(suspected_key)
-                data_dict[suspected_key] = []
-            data_dict[suspected_key].append({'ID' : self.state['txid'], 'vin/vout': self.state["vin/vout"]+' '+str(self.state["n"]), 'signatures' : sigs})
+            data_dict[suspected_key].append(to_append)
             return True
 
         block = self.state["block"]
@@ -289,8 +273,19 @@ class BitcoinPublicKeyParser:
         return len(data_dict) >= max_key_count
 
 
+    def empty_data_dictionary(self, data_dict):
+        keys = list(data_dict.keys())
+        for key in keys:
+            del data_dict[key]
+        assert data_dict == {}
+
+    def empty_data_list(self, data_list):
+        while not len(data_list) == 0:
+            data_list.pop()
+        assert data_list == []
+
     # Flushes collected data to a JSON file.
-    def flush_data_dict(self, file_name, data_dict):
+    def flush_data_dict(self, file_name, data_dict, exception):
         if not self.verbose: # Change type from set to dict.
             for block, key_set in data_dict.items():
                 data_dict[block] = list(key_set)
@@ -298,19 +293,29 @@ class BitcoinPublicKeyParser:
         try:
             with open(file_name, 'w') as outfile:
                 json.dump(data_dict, outfile, indent = 2)
-            data_dict = {}
         except:
             self.logger.exception("Couldn't flush a dictionary to file.")
+            if exception:
+                self.logger.error(f"Dictionary: {data_list}.")
+
+            if not self.verbose: # Change type back to set.
+                for block, key_list in data_dict.items():
+                    data_dict[block] = set(key_list)
+        else:
+            self.empty_data_dictionary(data_dict)
 
 
-    def flush_data_list(self, file_name, data_list):
+    def flush_data_list(self, file_name, data_list, exception):
         try:
             with open(file_name, 'w') as outfile:
                 for line in data_list:
                     outfile.write(line + '\n')
-            data_list = []
         except:
             self.logger.exception("Couldn't flush a list to file.")
+            if exception:
+                self.logger.error(f"List: {data_list}.")
+        else:
+            self.empty_data_list(data_list)
 
     # This functions goes trough all data dictionaries and checks, whether they need to be flushed.
     # Argument <exception> is a bool value to force flushing: for example, at the very end of the script.
@@ -319,14 +324,14 @@ class BitcoinPublicKeyParser:
         for dict_tup in self.DICTS: 
             if self.data_dict_full(dict_tup[0]) or (exception and dict_tup[0] != {}):
                 file_name = f"gathered-data/{dict_tup[1]}_{str(n)}_{str(pid)}.json"
-                self.flush_data_dict(file_name, dict_tup[0])
+                self.flush_data_dict(file_name, dict_tup[0], exception)
                 self.logger.info(f"Flushed to 'gathered-data/{dict_tup[1]}_{str(n)}_{str(pid)}.json'")
                 to_return = True
 
         for list_tup in self.LISTS:
             if self.data_dict_full(list_tup[0]) or (exception and list_tup[0] != []):
                 file_name = f"gathered-data/{list_tup[1]}_{str(n)}_{pid}.json"
-                self.flush_data_list(file_name, list_tup[0])
+                self.flush_data_list(file_name, list_tup[0], exception)
                 self.logger.info(f"Flushed to 'gathered-data/{list_tup[1]}_{str(n)}_{pid}.json'")
                 to_return = True
 
@@ -391,7 +396,7 @@ class BitcoinPublicKeyParser:
         try:
             int(command, 16)
         except:
-            self.logger.debug(f"Invalid script command '{command}'.")
+            #self.logger.debug(f"Invalid script command '{command}'.")
             return None, None
 
         length = int(command, 16) # Length in bytes
@@ -458,7 +463,7 @@ class BitcoinPublicKeyParser:
                 schnorr_sigs.append(item)
                 continue
 
-            self.logger.debug(f"Unknown stack item '{item}'.")
+            #self.logger.debug(f"Unknown stack item '{item}'.")
 
         return ecdsa_keys, ecdsa_sigs, schnorr_keys, schnorr_sigs
 
@@ -477,21 +482,21 @@ class BitcoinPublicKeyParser:
 
         if len(ecdsa_keys) > 0:
             if len(ecdsa_keys) == 1 and len(ecdsa_sigs) == 1:
-                self.add_key_to_data_dict(ecdsa_keys[0], ecdsa_sigs[0], self.ecdsa_data)
+                self.add_key_to_data_dict(ecdsa_keys[0], ecdsa_sigs[0], None, self.ecdsa_data)
             elif len(ecdsa_keys) == 1 and len(ecdsa_sigs) == 0:
-                self.add_key_to_data_dict(ecdsa_keys[0], "NaN", self.ecdsa_data)
+                self.add_key_to_data_dict(ecdsa_keys[0], "NaN", None, self.ecdsa_data)
             else:
                 for key in ecdsa_keys:
-                    self.add_key_to_unmatched_data_dict(key, ecdsa_sigs, self.unmatched_ecdsa_data)
+                    self.add_key_to_data_dict(key, None, ecdsa_sigs, self.unmatched_ecdsa_data)
 
         if len(schnorr_keys) > 0:
             if len(schnorr_keys) == 1 and len(schnorr_sigs) == 1:
-                self.add_key_to_data_dict(schnorr_keys[0], schnorr_sigs[0], self.schnorr_data)
+                self.add_key_to_data_dict(schnorr_keys[0], schnorr_sigs[0], None, self.schnorr_data)
             elif len(schnorr_keys) == 1 and len(schnorr_sigs) == 0:
-                self.add_key_to_data_dict(schnorr_keys[0], "NaN", self.schnorr_data)
+                self.add_key_to_data_dict(schnorr_keys[0], "NaN", None, self.schnorr_data)
             else:
                 for key in ecdsa_keys:
-                    self.add_key_to_unmatched_data_dict(key, schnorr_sigs, self.unmatched_schnorr_data)
+                    self.add_key_to_data_dict(key, None, schnorr_sigs, self.unmatched_schnorr_data)
 
         return True
 
@@ -509,17 +514,16 @@ class BitcoinPublicKeyParser:
         if signature == "NaN": # If there is no signature, there is no sense in looking up the corresponding public key.
             return False
 
-        if (not self.rpc or self.TESTING) and len(vin["scriptSig"]["asm"].split(" ")) == 1:    # Signature is not "NaN", so it is either P2PK or P2PKH,
-            return True                                                      # If there is only one item in sctiptSig, then it is P2PK
-                                                                             # If it is P2PK and we do not have an RPC server available,
-                                                                             # do not count as failed, so return True and go to the next input.
+        if not self.rpc or self.TESTING:   # Signature is not "NaN", so it is either P2PK or P2PKH,
+            return True                    # If it is P2PK and we do not have an RPC server available,
+                                           # do not count as failed, so return True and go to the next input.
         vout = self.get_previous_vout(vin)
         suspected_key = vout["scriptPubKey"]["asm"].split(' ')[0]
 
         if not self.correct_ecdsa_key(suspected_key):
             return False
 
-        self.add_key_to_data_dict(suspected_key, signature, self.ecdsa_data)
+        self.add_key_to_data_dict(suspected_key, signature, None, self.ecdsa_data)
         return True
 
 
@@ -534,7 +538,7 @@ class BitcoinPublicKeyParser:
 
         signature = self.extract_signature_p2pk_p2pkh(vin)
 
-        self.add_key_to_data_dict(suspected_key, signature, self.ecdsa_data)
+        self.add_key_to_data_dict(suspected_key, signature, None, self.ecdsa_data)
         return True
 
 
@@ -564,7 +568,7 @@ class BitcoinPublicKeyParser:
         if not self.correct_ecdsa_key(suspected_key):
             return False
 
-        self.add_key_to_data_dict(suspected_key, signature, self.ecdsa_data)
+        self.add_key_to_data_dict(suspected_key, signature, None, self.ecdsa_data)
         return True
 
 
@@ -614,7 +618,7 @@ class BitcoinPublicKeyParser:
         if not self.correct_schnorr_key(suspected_key):
             return False
 
-        self.add_key_to_data_dict(suspected_key, signature, self.schnorr_data)
+        self.add_key_to_data_dict(suspected_key, signature, None, self.schnorr_data)
         return True
 
 
@@ -631,7 +635,7 @@ class BitcoinPublicKeyParser:
         suspected_key = control_block[:64]
 
         if self.correct_schnorr_key(suspected_key):
-            self.add_key_to_data_dict(suspected_key, "NaN", self.schnorr_data)
+            self.add_key_to_data_dict(suspected_key, "NaN", None, self.schnorr_data)
             toreturn = True
 
         script = vin["txinwitness"][-2]
@@ -657,7 +661,7 @@ class BitcoinPublicKeyParser:
         if not self.correct_ecdsa_key(suspected_key):
             return False
 
-        self.add_key_to_data_dict(suspected_key, signature, self.ecdsa_data)
+        self.add_key_to_data_dict(suspected_key, signature, None, self.ecdsa_data)
         return True
 
 
@@ -674,7 +678,7 @@ class BitcoinPublicKeyParser:
         if not self.correct_schnorr_key(suspected_key):
             return False
 
-        self.add_key_to_data_dict(suspected_key, "NaN", self.schnorr_data)
+        self.add_key_to_data_dict(suspected_key, "NaN", None, self.schnorr_data)
         return True
 
 
@@ -765,10 +769,12 @@ class BitcoinPublicKeyParser:
 
         for txid in block_transactions:
             self.process_transaction(txid)
+            self.logger.debug(f"Parsed transaction {txid}.")
 
         keys_after = self.statistics["keys"]
         block_end_time = time.perf_counter()
         self.logger.info(f"Processed block {n} in {block_end_time - block_start_time} seconds. Speed: {int((keys_after - keys_before) / (block_end_time - block_start_time))} keys/sec. ")
+
 
     def process_block_range(self, range_to_parse):
 

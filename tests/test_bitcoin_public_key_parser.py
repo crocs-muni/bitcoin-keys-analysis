@@ -1,8 +1,9 @@
 #!/bin/python3
-import sys
+import sys, os
 sys.path.append("/home/xyakimo1/crocs/src") # add here path to the project's source directory
 from bitcoin_public_key_parser import BitcoinPublicKeyParser, BitcoinRPC
 import pytest
+import json, copy, shutil
 
 rpc = BitcoinRPC()
 parser = BitcoinPublicKeyParser(rpc)
@@ -48,11 +49,6 @@ def test_increment_key_count(suspected_key: str, expected_ecdsa: int, expected_s
     assert parser.statistics["schnorr"] == expected_schnorr
     assert parser.statistics["keys"] == expected_keys
 
-#def test_add_key_to_data_dict(suspected_key, signature, data_dict, expected_dict):
-    # TODO
-
-#def test_add_key_to_unmatched_data_dict(suspected_key, sigs, data_dict, expected_dict):
-    # TODO
 
 @pytest.mark.parametrize("txid, vin_n, expected_signature", [
     ("ad511d71762f4123df227e2e048672c4df8cc2ac056ee37f52ff33085b2a2c47", 0, "304502200f55222e27f6b6aff33e314339e569b54e80df76f628daa2c76ef56558bc650c022100c989ec3a0fad6b1aff1087378c219091de70bac9d7bf3ebfa7718a6c4fa7aeb701"), # P2PK
@@ -806,7 +802,76 @@ def test_not_verbose():
 
     parser.set_verbosity(True)
 
+def chdir_to_tmp() -> None:
+    os.chdir("/tmp")
+    if os.path.isdir("pytest_test_bitcoin_public_key_parser"):
+        shutil.rmtree("pytest_test_bitcoin_public_key_parser")
 
-def test_flush_data_dict():
-    #TODO
-    pass
+    os.mkdir("pytest_test_bitcoin_public_key_parser")
+    os.chdir("pytest_test_bitcoin_public_key_parser")
+    os.mkdir("gathered-data")
+    os.mkdir("logs")
+    os.mkdir("state")
+
+def compare_dicts_to_disk(verbosity: bool, prev_dicts: list, n: int, pid: int = 0) -> bool:
+    for data_dict, dict_name in prev_dicts:
+        file_name = f"gathered-data/{dict_name}_{str(n)}_{str(pid)}.json"
+
+        try:
+            with open(file_name, 'r') as f:
+                disk_dict = json.load(f)
+        except Exception as e:
+            print(f"Couldn't open a file or a JSON-parsing error ({file_name}).", file=sys.stderr)
+            print(e, file=sys.stderr)
+            return False
+
+        if not verbosity:
+            for block, key_list in disk_dict.items():
+                disk_dict[block] = set(key_list)
+
+        for block, data_keys in data_dict.items():
+            assert type(disk_dict[str(block)]) == type(data_keys)
+            if disk_dict[str(block)] != data_keys:
+                print(f"Dictionaries are not equal!\nSymmetric difference: {disk_dict[str(block)].symmetric_difference(data_keys)}", file=sys.stderr)
+                return False
+
+    return True
+
+def compare_lists_to_disk(prev_lists: list, n: int, pid: int = 0) -> bool:
+    for data_list, list_name in prev_lists:
+        file_name = f"gathered-data/{list_name}_{str(n)}_{pid}.json"
+        disk_list = []
+
+        try:
+            with open(file_name, 'r') as f:
+                for line in f:
+                    disk_list.append(line.rstrip())
+        except Exception as e:
+            print(f"Couldn't open a file or a reading error ({file_name}).", file=sys.stderr)
+            print(e, file=sys.stderr)
+            return False
+
+        if disk_list != data_list:
+            print(f"Lists are not equal!\nDisk_list: {disk_list}.\nData_list: {data_list}", file=sys.stderr)
+            return False
+
+    return True
+
+
+@pytest.mark.parametrize("verbosity, n", [(False, 20), (True, 10)])
+def test_flush_to_disk(verbosity: bool, n: int):
+    parser.set_verbosity(verbosity)
+
+    block_n = parser.rpc.getblockcount() - n
+    assert block_n > 0
+
+    for i in range(block_n, block_n + n):
+        parser.process_block(i)
+
+        temp_dicts = [(copy.deepcopy(data_dict), dict_name) for data_dict, dict_name in parser.DICTS if data_dict != {}]
+        temp_lists = [(copy.deepcopy(data_list), list_name) for data_list, list_name in parser.LISTS if data_list != []]
+        chdir_to_tmp()
+        parser.flush_if_needed(i, True)
+
+        assert compare_dicts_to_disk(verbosity, temp_dicts, i)
+        assert compare_lists_to_disk(temp_lists, i)

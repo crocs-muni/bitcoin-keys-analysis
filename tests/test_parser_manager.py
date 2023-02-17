@@ -75,8 +75,10 @@ create_directory_tree() ## create_directory_tree() must be called before the tes
 @pytest.mark.parametrize("range_to_parse",
                          [
                              range(1, 10),
-                             range(1, 750000, 100000)
-                             #range(775000, 775150)
+                             range(1000, 2000, 60),
+                             range(1, 750000, 100000),
+                             range(1500, 1600),
+                             range(775000, 775150)
                          ])
 def test_parse_range_verbosity_false(range_to_parse: range):
     parser.set_verbosity(False)
@@ -95,13 +97,20 @@ def test_parse_range_verbosity_false(range_to_parse: range):
     one_process_parsing_time = one_process_finish_timestamp - one_process_start_timestamp
     multiprocessing_parsing_time = multiprocessing_finish_timestamp - multiprocessing_start_timestamp
 
+    try:
+        assert multiprocessing_parsing_time < one_process_parsing_time
+    except:
+        logger.warning(f"One-process parsing was faster than multiprocessing! One: {one_process_parsing_time}s / Multi: {multiprocessing_parsing_time}s. {multiprocessing_parsing_time / one_process_parsing_time} times faster on {len(range_to_parse)} blocks ({range_to_parse}).")
+    else:
+        logger.info(f"Multi-process parsing was faster than one-process. One: {one_process_parsing_time}s / Multi: {multiprocessing_parsing_time}s. {one_process_parsing_time / multiprocessing_parsing_time} times faster on {len(range_to_parse)} blocks ({range_to_parse}).")
+
     dict1, dict2 = create_dicts_to_compare_verbosity_false("/tmp/pytest_test_parser_manager/one_process/gathered-data",\
                                                            "/tmp/pytest_test_parser_manager/multiprocessing/gathered-data")
 
     try:
         assert set(dict1.keys()) == set(dict2.keys())
     except:
-        logger.critical(f"Dict1.keys(): {dict1.keys()}, dict2.keys(): {dict2.keys()}.")
+        logger.critical(f"Symmetric_difference: {set(dict1.keys()).symmetric_difference(dict2.keys())}.")
         raise AssertionError
 
     assert len(dict1) > 0
@@ -113,10 +122,3 @@ def test_parse_range_verbosity_false(range_to_parse: range):
             raise AssertionError
 
     logger.debug(f"Dictionary from one process: {dict1}; Dictionary from multiprocessing: {dict2}")
-
-    try:
-        assert multiprocessing_parsing_time < one_process_parsing_time()
-    except:
-        logger.warning(f"One-process parsing was faster than multiprocessing! One: {one_process_parsing_time}s / Multi: {multiprocessing_parsing_time}s. {multiprocessing_parsing_time / one_process_parsing_time} times faster on {len(range_to_parse)} blocks ({range_to_parse}).")
-    else:
-        logger.info(f"Multi-process parsing was faster than one-process. One: {one_process_parsing_time}s / Multi: {multiprocessing_parsing_time}s. {one_process_parsing_time / multiprocessing_parsing_time} times faster on {len(range_to_parse)} blocks ({range_to_parse}).")
