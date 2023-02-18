@@ -1,17 +1,22 @@
 This file is to write down some [potentional] issues and things to do later. Just not to forget and to see where are we going. Deal with "TODO" first.
 
 ------------------------------------------------------------------------------------------------------------------------------
-<TODO>:   Dump statistics and types to the file.
+<TODO>:   Dump statistics and types to the file?
+------------------------------------------------------------------------------------------------------------------------------
+<TODO>:   Compare types in test_parser.manager.py .
+------------------------------------------------------------------------------------------------------------------------------
+<TODO>:   Check that parser processes are alive.
 ------------------------------------------------------------------------------------------------------------------------------
 <TODO>:   Call RPC in multiple processes.
 ------------------------------------------------------------------------------------------------------------------------------
-<TODO>:   Parsers distribution? In other word find optimal amount of parsers.
+<TODO>:   Find optimal amount of parsers. Something like statistics how many percents of transactions each parser parses.
 ------------------------------------------------------------------------------------------------------------------------------
 <TODO>:   Real-time parsing.
 ------------------------------------------------------------------------------------------------------------------------------
 <TODO>:   Don't forget to change log level to info.
 ------------------------------------------------------------------------------------------------------------------------------
 <TODO>:   Paths in config files, not constants.
+          Bash script in other/ to create directories like gathered-data, logs, state.
 ------------------------------------------------------------------------------------------------------------------------------
-<TODO>:   Update README.md
+<TODO>:   Update README.md .
 -----------------------------------------------------------------------------------------------------------------------------

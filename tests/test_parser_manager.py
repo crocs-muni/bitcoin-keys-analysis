@@ -76,9 +76,10 @@ create_directory_tree() ## create_directory_tree() must be called before the tes
                          [
                              range(1, 10),
                              range(1000, 2000, 60),
-                             range(1, 750000, 100000),
+                             range(1, 800000, 100000),
                              range(1500, 1600),
-                             range(775000, 775150)
+                             range(775000, 775150),
+                             range(parser.rpc.getblockcount() - 300, parser.rpc.getblockcount())
                          ])
 def test_parse_range_verbosity_false(range_to_parse: range):
     parser.set_verbosity(False)
@@ -120,5 +121,3 @@ def test_parse_range_verbosity_false(range_to_parse: range):
         except:
             logger.critical(f"Block_n: {block_n}, symmetric_difference: {set(dict1[block_n]).symmetric_difference(set(dict2[block_n]))}.")
             raise AssertionError
-
-    logger.debug(f"Dictionary from one process: {dict1}; Dictionary from multiprocessing: {dict2}")

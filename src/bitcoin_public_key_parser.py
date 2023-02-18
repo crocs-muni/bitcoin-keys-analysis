@@ -41,7 +41,7 @@ class BitcoinPublicKeyParser:
     file_handler.setFormatter(formatter)
 
     logger.addHandler(file_handler)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
 
     """
@@ -769,7 +769,6 @@ class BitcoinPublicKeyParser:
 
         for txid in block_transactions:
             self.process_transaction(txid)
-            self.logger.debug(f"Parsed transaction {txid}.")
 
         keys_after = self.statistics["keys"]
         block_end_time = time.perf_counter()
@@ -812,13 +811,14 @@ class BitcoinPublicKeyParser:
                 return None
 
             self.state["block"] = block_n
+            self.logger.debug(f"state['block']: {self.state['block']}.")
             self.state["txid"] = transaction["txid"]
             self.statistics["transactions"] += 1
 
             self.process_inputs(transaction)
             self.process_outputs(transaction)
-            self.logger.info(f"Parsed transaction {transaction['txid']}.")
             parsed_batch.append(self.state["txid"])
+            self.logger.debug(f"Processed transaction {self.state['txid']}.")
 
             if len(parsed_batch) < BATCH_SIZE:
                 continue

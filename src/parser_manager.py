@@ -19,7 +19,7 @@ class BitcoinParserManager:
     file_handler.setFormatter(formatter)
 
     logger.addHandler(file_handler)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
     rpc = BitcoinRPC()
     rpc_process = None
@@ -135,7 +135,6 @@ class BitcoinParserManager:
             except:
                 break
             assert type(parser_echo) != None
-            self.logger.debug(f"Parser's echo: {parser_echo}.")
 
             self.update_block_progress(parser_echo[0])
             self.update_statistics(parser_echo[1])
@@ -154,6 +153,7 @@ class BitcoinParserManager:
         for block_n, txid_list in self.block_progress.items():
             if len(txid_list) == 0 and block_n not in self.state["parsed"]:
                 self.state["parsed"].append(block_n)
+                self.logger.debug(f"Parsed all transactions from block {block_n}.")
 
     def update_statistics(self, statistics: dict) -> None:
         for key, value in statistics.items():
