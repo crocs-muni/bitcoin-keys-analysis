@@ -268,13 +268,14 @@ class BitcoinPublicKeyParser:
         except:
             self.logger.exception("Couldn't flush a dictionary to file.")
             if exception:
-                self.logger.error(f"Dictionary: {data_list}.")
+                self.logger.error(f"Dictionary: {data_dict}.")
 
             if not self.verbose: # Change type back to set.
                 for block, key_list in data_dict.items():
                     data_dict[block] = set(key_list)
         else:
             self.empty_data_dictionary(data_dict)
+            self.logger.info(f"Flushed to '{file_name}'.")
 
 
     def flush_data_list(self, file_name, data_list, exception):
@@ -288,6 +289,7 @@ class BitcoinPublicKeyParser:
                 self.logger.error(f"List: {data_list}.")
         else:
             self.empty_data_list(data_list)
+            self.logger.info(f"Flushed to '{file_name}'.")
 
     # This functions goes trough all data dictionaries and checks, whether they need to be flushed.
     # Argument <exception> is a bool value to force flushing: for example, at the very end of the script.
@@ -297,14 +299,12 @@ class BitcoinPublicKeyParser:
             if self.data_dict_full(dict_tup[0]) or (exception and dict_tup[0] != {}):
                 file_name = f"gathered-data/{dict_tup[1]}_{str(n)}.json"
                 self.flush_data_dict(file_name, dict_tup[0], exception)
-                self.logger.info(f"Flushed to '{file_name}'.")
                 to_return = True
 
         for list_tup in self.LISTS:
             if self.data_dict_full(list_tup[0]) or (exception and list_tup[0] != []):
                 file_name = f"gathered-data/{list_tup[1]}_{str(n)}.json"
                 self.flush_data_list(file_name, list_tup[0], exception)
-                self.logger.info(f"Flushed to '{file_name}'.")
                 to_return = True
 
         return to_return
@@ -724,7 +724,7 @@ class BitcoinPublicKeyParser:
 
         keys_after = self.statistics["keys"]
         block_end_time = time.perf_counter()
-        self.logger.info(f"Processed block {n} in {block_end_time - block_start_time} seconds. Speed: {int((keys_after - keys_before) / (block_end_time - block_start_time))} keys/sec. ")
+        self.logger.debug(f"Processed block {n} in {block_end_time - block_start_time} seconds. Speed: {int((keys_after - keys_before) / (block_end_time - block_start_time))} keys/sec. ")
 
 
     def process_block_range(self, range_to_parse):
@@ -733,7 +733,8 @@ class BitcoinPublicKeyParser:
             self.process_block(n)
             self.flush_if_needed(n, False)
 
-            #self.print_speed()
+            if self.statistics["blocks"] % 10 == 0:
+                self.logger.info(f"Processed {self.statistics['blocks']} blocks. Last parsed block is {self.state['block']}.")
 
         self.flush_if_needed(n, True)
         self.print_statistics()
