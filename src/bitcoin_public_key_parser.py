@@ -73,7 +73,8 @@ class BitcoinPublicKeyParser:
         self.unmatched_schnorr_data = {}
 
         self.DICTS = [(self.ecdsa_data, "ecdsa_data"), (self.unmatched_ecdsa_data, "unmatched_ecdsa_data"),\
-                      (self.schnorr_data, "schnorr_data"), (self.unmatched_schnorr_data, "unmatched_schnorr_data")]
+                      (self.schnorr_data, "schnorr_data"), (self.unmatched_schnorr_data, "unmatched_schnorr_data"),\
+                      (self.types, "tx_types")]
 
         self.failed_inputs_list = []
         self.failed_outputs_list = []
@@ -148,12 +149,15 @@ class BitcoinPublicKeyParser:
         self.verbose = verbose
         self.logger.info(f"Verbosity has been set to {self.verbose}. All dictionaries were reset.")
 
+        self.types = {}
         self.ecdsa_data = {}
         self.unmatched_ecdsa_data = {}
         self.schnorr_data = {}
         self.unmatched_schnorr_data = {}
         self.DICTS = [(self.ecdsa_data, "ecdsa_data"), (self.unmatched_ecdsa_data, "unmatched_ecdsa_data"),\
-                      (self.schnorr_data, "schnorr_data"), (self.unmatched_schnorr_data, "unmatched_schnorr_data")]
+                      (self.schnorr_data, "schnorr_data"), (self.unmatched_schnorr_data, "unmatched_schnorr_data"),\
+                      (self.types, "tx_types")] # For some reason empty_data_dictionary() does not work fine here (test_not_verbose fails).
+                                                # Please use empty_data_dictionary() if you know how to fix the issue.
 
     """
         "Correct" keys and signatures functions
@@ -258,7 +262,7 @@ class BitcoinPublicKeyParser:
 
     # Flushes collected data to a JSON file.
     def flush_data_dict(self, file_name, data_dict, exception):
-        if not self.verbose: # Change type from set to dict.
+        if not self.verbose and data_dict != self.types: # Change type from set to dict.
             for block, key_set in data_dict.items():
                 data_dict[block] = list(key_set)
 
@@ -270,7 +274,7 @@ class BitcoinPublicKeyParser:
             if exception:
                 self.logger.error(f"Dictionary: {data_dict}.")
 
-            if not self.verbose: # Change type back to set.
+            if not self.verbose and data_dict != self.types: # Change type back to set.
                 for block, key_list in data_dict.items():
                     data_dict[block] = set(key_list)
         else:

@@ -811,7 +811,6 @@ def chdir_to_tmp() -> None:
     os.chdir("pytest_test_bitcoin_public_key_parser")
     os.mkdir("gathered-data")
     os.mkdir("logs")
-    os.mkdir("state")
 
 def compare_dicts_to_disk(verbosity: bool, prev_dicts: list, n: int) -> bool:
     for data_dict, dict_name in prev_dicts:
@@ -825,7 +824,7 @@ def compare_dicts_to_disk(verbosity: bool, prev_dicts: list, n: int) -> bool:
             print(e, file=sys.stderr)
             return False
 
-        if not verbosity:
+        if not verbosity and dict_name != "tx_types":
             for block, key_list in disk_dict.items():
                 disk_dict[block] = set(key_list)
 
