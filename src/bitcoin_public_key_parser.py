@@ -6,6 +6,8 @@ import logging                      # logging
 from datetime import datetime       # transaction types graphs
 import matplotlib.pyplot as plt     # transaction types graphs
 
+from multiprocessing import Process
+
 
 class BitcoinRPC:
     bitcoin.SelectParams("mainnet")
@@ -245,6 +247,14 @@ class BitcoinPublicKeyParser:
     def data_dict_full(self, data_dict):
         # Maximum key count to store in RAM before flushing to JSON. You can set much more, depends on your RAM size.
         # Average length of key record in JSON format is ~300B.
+        if data_dict == self.types:
+            max_month_count = 7
+            return len(data_dict) >= max_month_count
+
+        if not self.verbose:
+            max_block_count = 200
+            return len(data_dict) >= max_block_count
+
         max_key_count = 10000
         return len(data_dict) >= max_key_count
 
@@ -745,5 +755,17 @@ class BitcoinPublicKeyParser:
 
 
 if __name__ == "__main__":
+    PARSER_COUNT = 10
     rpc = BitcoinRPC()
-    parser = BitcoinPublicKeyParser(rpc)
+    parsers = [BitcoinPublicKeyParser(rpc) for i in range(PARSER_COUNT)]
+    processes = []
+
+    for i, parser in enumerate(parsers):
+        range_to_parse = range(778001 + i, 780001, PARSER_COUNT)
+        new_process = Process(target=parser.process_block_range, args=(range_to_parse,))
+        new_process.start()
+        parser.logger.info(f"Successfully started parsing range {range_to_parse} in process with pid {new_process.pid}.")
+        processes.append(new_process)
+
+    for process in processes:
+        process.join()
