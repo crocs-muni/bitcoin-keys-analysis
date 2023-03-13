@@ -811,11 +811,10 @@ def chdir_to_tmp() -> None:
     os.chdir("pytest_test_bitcoin_public_key_parser")
     os.mkdir("gathered-data")
     os.mkdir("logs")
-    os.mkdir("state")
 
-def compare_dicts_to_disk(verbosity: bool, prev_dicts: list, n: int, pid: int = 0) -> bool:
+def compare_dicts_to_disk(verbosity: bool, prev_dicts: list, n: int) -> bool:
     for data_dict, dict_name in prev_dicts:
-        file_name = f"gathered-data/{dict_name}_{str(n)}_{str(pid)}.json"
+        file_name = f"gathered-data/{dict_name}_{str(n)}.json"
 
         try:
             with open(file_name, 'r') as f:
@@ -825,7 +824,7 @@ def compare_dicts_to_disk(verbosity: bool, prev_dicts: list, n: int, pid: int = 
             print(e, file=sys.stderr)
             return False
 
-        if not verbosity:
+        if not verbosity and dict_name != "tx_types":
             for block, key_list in disk_dict.items():
                 disk_dict[block] = set(key_list)
 
@@ -837,9 +836,9 @@ def compare_dicts_to_disk(verbosity: bool, prev_dicts: list, n: int, pid: int = 
 
     return True
 
-def compare_lists_to_disk(prev_lists: list, n: int, pid: int = 0) -> bool:
+def compare_lists_to_disk(prev_lists: list, n: int) -> bool:
     for data_list, list_name in prev_lists:
-        file_name = f"gathered-data/{list_name}_{str(n)}_{pid}.json"
+        file_name = f"gathered-data/{list_name}_{str(n)}.json"
         disk_list = []
 
         try:
