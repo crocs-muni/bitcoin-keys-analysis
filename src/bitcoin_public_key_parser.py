@@ -754,7 +754,7 @@ class BitcoinPublicKeyParser:
         self.print_statistics()
 
 
-    def parse_range_in_multiprocess(self, block_from, block_to, parser_count = 10):
+    def process_range_in_multiprocess(self, block_from, block_to, parser_count = 10):
         rpc = BitcoinRPC()
         parsers = [BitcoinPublicKeyParser(rpc) for i in range(parser_count)]
         processes = []
@@ -769,7 +769,26 @@ class BitcoinPublicKeyParser:
         for process in processes:
             process.join()
 
+
+    def process_upon_a_new_block(self, block_from, sleep_sec = 10):
+        self.logger.setLevel(logging.DEBUG)
+        last_parsed_block = block_from
+
+        while True:
+            try:
+                block_tip = self.rpc.getblockcount()
+            except Exception as e:
+                self.logger.exception("Something went wrong when calling RPC getblockcount.")
+                continue
+
+            if block_tip <= last_parsed_block:
+                time.sleep(sleep_sec)
+                continue
+
+            self.process_block(last_parsed_block + 1)
+            last_parsed_block += 1
+            self.flush_if_needed(last_parsed_block, True)
+
 if __name__ == "__main__":
     rpc = BitcoinRPC()
     parser = BitcoinPublicKeyParser(rpc)
-    parser.parse_range_in_multiprocess(770000, 771001)
