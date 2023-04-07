@@ -754,18 +754,22 @@ class BitcoinPublicKeyParser:
         self.print_statistics()
 
 
+    def parse_range_in_multiprocess(self, block_from, block_to, parser_count = 10):
+        rpc = BitcoinRPC()
+        parsers = [BitcoinPublicKeyParser(rpc) for i in range(parser_count)]
+        processes = []
+
+        for i, parser in enumerate(parsers):
+            range_to_parse = range(block_from + i, block_to, parser_count)
+            new_process = Process(target=parser.process_block_range, args=(range_to_parse,))
+            new_process.start()
+            parser.logger.info(f"Successfully started parsing range {range_to_parse} in process with pid {new_process.pid}.")
+            processes.append(new_process)
+
+        for process in processes:
+            process.join()
+
 if __name__ == "__main__":
-    PARSER_COUNT = 10
     rpc = BitcoinRPC()
-    parsers = [BitcoinPublicKeyParser(rpc) for i in range(PARSER_COUNT)]
-    processes = []
-
-    for i, parser in enumerate(parsers):
-        range_to_parse = range(778001 + i, 780001, PARSER_COUNT)
-        new_process = Process(target=parser.process_block_range, args=(range_to_parse,))
-        new_process.start()
-        parser.logger.info(f"Successfully started parsing range {range_to_parse} in process with pid {new_process.pid}.")
-        processes.append(new_process)
-
-    for process in processes:
-        process.join()
+    parser = BitcoinPublicKeyParser(rpc)
+    parser.parse_range_in_multiprocess(770000, 771001)
