@@ -1,12 +1,14 @@
 #!/usr/bin/python3
 
 import bitcoin.rpc, json            # basic functionality
-import time, os                     # BitcoinPublicKeyParser.print_statistics()
+import configparser                 # config files
+import os                           # config files, BitcoinPublicKeyParser.print_statistics()
+import time                         # BitcoinPublicKeyParser.print_statistics()
 import logging                      # logging
 from datetime import datetime       # transaction types graphs
 import matplotlib.pyplot as plt     # transaction types graphs
 
-from multiprocessing import Process
+from multiprocessing import Process # parallelization
 
 
 class BitcoinRPC:
@@ -16,17 +18,6 @@ class BitcoinRPC:
 
 
 class BitcoinPublicKeyParser:
-
-    logger = logging.getLogger(__name__)
-
-    file_handler = logging.FileHandler("logs/bitcoin_parser.log")
-    file_handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(process)d | %(message)s | %(funcName)s | %(lineno)d")
-    file_handler.setFormatter(formatter)
-
-    logger.addHandler(file_handler)
-    logger.setLevel(logging.INFO)
-
 
     """
         "Constants"
@@ -46,7 +37,45 @@ class BitcoinPublicKeyParser:
 
     INIT_TYPES_DICT = {'nonstandard': 0, 'pubkey': 0, 'pubkeyhash': 0, 'scripthash': 0, 'multisig': 0, 'nulldata': 0, 'witness_v0_scripthash': 0, 'witness_v0_keyhash': 0, 'witness_v1_taproot': 0, 'witness_unknown': 0}
 
-    def __init__(self, BitcoinRPC: object):
+
+    """
+        "Constructor"
+    """
+
+    def __init__(self, BitcoinRPC: object, config_section: str = "PATHS"):
+
+        """
+            Load "Config"
+        """
+
+        assert config_section == "PATHS" or config_section == "TEST_PATHS"
+        self.config_section = config_section
+
+        self.config = configparser.ConfigParser()
+        self.config.read(os.getenv("HOME") + "/.config/bitcoin_public_key_parser.ini")
+        assert self.config_section in self.config.sections()
+        assert {"log_file", "gathered_data_dir"}.issubset(set(self.config[self.config_section].keys()))
+
+
+        """
+            Set up "Logger"
+        """
+
+        self.logger = logging.getLogger(__name__)
+
+        file_handler = logging.FileHandler(self.config[self.config_section]["log_file"])
+        file_handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(process)d | %(message)s | %(funcName)s | %(lineno)d")
+        file_handler.setFormatter(formatter)
+
+        self.logger.addHandler(file_handler)
+        self.logger.setLevel(logging.INFO)
+
+
+        """
+            Actual "Parsing-related" stuff
+        """
+
         self.rpc = BitcoinRPC.rpc
         self.state = {"block": -1, "txid": "", "vin/vout": "", "n": -1} # Holds info about what is currently being parsed.
         self.start_time = time.time()
@@ -311,13 +340,13 @@ class BitcoinPublicKeyParser:
         to_return = False
         for dict_tup in self.DICTS: 
             if self.data_dict_full(dict_tup[0]) or (exception and dict_tup[0] != {}):
-                file_name = f"gathered-data/{dict_tup[1]}_{str(n)}.json"
+                file_name = f"{self.config[self.config_section]['gathered_data_dir']}/{dict_tup[1]}_{str(n)}.json"
                 self.flush_data_dict(file_name, dict_tup[0], exception)
                 to_return = True
 
         for list_tup in self.LISTS:
             if self.data_dict_full(list_tup[0]) or (exception and list_tup[0] != []):
-                file_name = f"gathered-data/{list_tup[1]}_{str(n)}.json"
+                file_name = f"{self.config[self.config_section]['gathered_data_dir']}/{list_tup[1]}_{str(n)}.json"
                 self.flush_data_list(file_name, list_tup[0], exception)
                 to_return = True
 

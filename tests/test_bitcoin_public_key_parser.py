@@ -1,18 +1,56 @@
 #!/bin/python3
-import sys, os
-sys.path.append("/home/xyakimo1/crocs/src") # add here path to the project's source directory
-from bitcoin_public_key_parser import BitcoinPublicKeyParser, BitcoinRPC
 import pytest
+import sys, os
+import configparser
 import json, copy, shutil
 
+"""
+    Load config.
+"""
+
+config = configparser.ConfigParser()
+config.read(os.getenv("HOME") + "/.config/bitcoin_public_key_parser.ini")
+
+assert "PATHS" in config.sections()
+assert {"src_dir"}.issubset(set(config["PATHS"].keys()))
+
+assert "TEST_PATHS" in config.sections()
+assert {"test_dir", "gathered_data_dir", "log_dir"}.issubset(set(config["TEST_PATHS"].keys()))
+
+
+"""
+    Create temp directory not to mess up the real data.
+"""
+
+if os.path.isdir(config['TEST_PATHS']['test_dir']):
+    shutil.rmtree(config['TEST_PATHS']['test_dir'])
+
+os.mkdir(config['TEST_PATHS']['test_dir'])
+os.mkdir(config['TEST_PATHS']['gathered_data_dir'])
+os.mkdir(config['TEST_PATHS']['log_dir'])
+
+
+"""
+    Import source code and create a parser instance.
+"""
+
+sys.path.append(config["PATHS"]["src_dir"])
+from bitcoin_public_key_parser import BitcoinPublicKeyParser, BitcoinRPC
+
 rpc = BitcoinRPC()
-parser = BitcoinPublicKeyParser(rpc)
+parser = BitcoinPublicKeyParser(rpc, "TEST_PATHS")
 parser.set_verbosity(True)
+
+
+"""
+    Actual testing.
+"""
 
 def set_state(parser: BitcoinPublicKeyParser, txid, vin_vout, n):
     parser.state["txid"] = txid
     parser.state["vin/vout"] = vin_vout
     parser.state["n"] = n
+
 
 @pytest.mark.parametrize("suspected_key, expected_result",
                          [("03bc7a18a65c8468994f75a87e7407a82ffabbc44656417491b2649fb5ee5bfdac", True), # real ECDSA public key
@@ -802,19 +840,10 @@ def test_not_verbose():
 
     parser.set_verbosity(True)
 
-def chdir_to_tmp() -> None:
-    os.chdir("/tmp")
-    if os.path.isdir("pytest_test_bitcoin_public_key_parser"):
-        shutil.rmtree("pytest_test_bitcoin_public_key_parser")
-
-    os.mkdir("pytest_test_bitcoin_public_key_parser")
-    os.chdir("pytest_test_bitcoin_public_key_parser")
-    os.mkdir("gathered-data")
-    os.mkdir("logs")
 
 def compare_dicts_to_disk(verbosity: bool, prev_dicts: list, n: int) -> bool:
     for data_dict, dict_name in prev_dicts:
-        file_name = f"gathered-data/{dict_name}_{str(n)}.json"
+        file_name = f"{config['TEST_PATHS']['gathered_data_dir']}/{dict_name}_{str(n)}.json"
 
         try:
             with open(file_name, 'r') as f:
@@ -838,7 +867,7 @@ def compare_dicts_to_disk(verbosity: bool, prev_dicts: list, n: int) -> bool:
 
 def compare_lists_to_disk(prev_lists: list, n: int) -> bool:
     for data_list, list_name in prev_lists:
-        file_name = f"gathered-data/{list_name}_{str(n)}.json"
+        file_name = f"{config['TEST_PATHS']['gathered_data_dir']}/{list_name}_{str(n)}.json"
         disk_list = []
 
         try:
@@ -869,7 +898,6 @@ def test_flush_to_disk(verbosity: bool, n: int):
 
         temp_dicts = [(copy.deepcopy(data_dict), dict_name) for data_dict, dict_name in parser.DICTS if data_dict != {}]
         temp_lists = [(copy.deepcopy(data_list), list_name) for data_list, list_name in parser.LISTS if data_list != []]
-        chdir_to_tmp()
         parser.flush_if_needed(i, True)
 
         assert compare_dicts_to_disk(verbosity, temp_dicts, i)
