@@ -7,6 +7,7 @@ import time                         # BitcoinPublicKeyParser.print_statistics()
 import logging                      # logging
 from datetime import datetime       # transaction types graphs
 import matplotlib.pyplot as plt     # transaction types graphs
+from typing import Tuple            # type hints
 
 from multiprocessing import Process # parallelization
 
@@ -117,7 +118,7 @@ class BitcoinPublicKeyParser:
         "Print" functions
     """
 
-    def print_statistics(self):
+    def print_statistics(self) -> None:
         try:
             print("\n", "=" * os.get_terminal_size().columns, sep = '')
         except:
@@ -131,13 +132,13 @@ class BitcoinPublicKeyParser:
         except:
             print("=============")
 
-    def show_dict(self, dictionary):
+    def show_dict(self, dictionary: dict) -> None:
         print(json.dumps(dictionary, indent = 2))
 
-    def print_speed(self):
+    def print_speed(self) -> None:
         print("Speed: {:0.2f} keys/sec".format(self.statistics["keys"]/(time.time() - self.start_time)))
 
-    def draw_tx_types_graph(self, types_dict: dict):
+    def draw_tx_types_graph(self, types_dict: dict) -> None:
         months = sorted(types_dict.keys())
 
         for tx_type in self.INIT_TYPES_DICT.keys():
@@ -155,7 +156,7 @@ class BitcoinPublicKeyParser:
         Different "Helping" functions.
     """
 
-    def get_previous_vout(self, vin):
+    def get_previous_vout(self, vin: dict) -> dict:
         prev_transaction_id = vin["txid"]
         prev_transaction = self.rpc.getrawtransaction(prev_transaction_id, True)
         vout_num = vin["vout"]
@@ -163,7 +164,7 @@ class BitcoinPublicKeyParser:
         return vout
 
 
-    def increment_key_count(self, suspected_key):
+    def increment_key_count(self, suspected_key: str) -> None:
         if len(suspected_key) in self.ECDSA_PUBKEY_LENGTHS:
             self.statistics["ecdsa"] += 1
         if len(suspected_key) == self.SCHNORR_PUBKEY_LENGTH:
@@ -171,11 +172,11 @@ class BitcoinPublicKeyParser:
         self.statistics["keys"] += 1
 
 
-    def reset_statistics(self):
+    def reset_statistics(self) -> None:
         for key in self.statistics.keys():
             self.statistics[key] = 0
 
-    def set_verbosity(self, verbose: bool):
+    def set_verbosity(self, verbose: bool) -> None:
         assert type(verbose) == bool
         self.verbose = verbose
         self.logger.info(f"Verbosity has been set to {self.verbose}. All dictionaries were reset.")
@@ -194,7 +195,7 @@ class BitcoinPublicKeyParser:
         "Correct" keys and signatures functions
     """
 
-    def correct_ecdsa_key(self, suspected_key):
+    def correct_ecdsa_key(self, suspected_key: str) -> bool:
 
         if len(suspected_key) not in self.ECDSA_PUBKEY_LENGTHS:
             return False
@@ -209,7 +210,7 @@ class BitcoinPublicKeyParser:
 
         return False
 
-    def correct_ecdsa_signature(self, signature):
+    def correct_ecdsa_signature(self, signature: str) -> bool:
         if len(signature) not in self.ECDSA_SIG_LENGTHS:
             return False
 
@@ -221,10 +222,10 @@ class BitcoinPublicKeyParser:
 
         return True
 
-    def correct_schnorr_key(self, suspected_key):
+    def correct_schnorr_key(self, suspected_key: str) -> bool:
         return len(suspected_key) == self.SCHNORR_PUBKEY_LENGTH
 
-    def correct_schnorr_signature(self, signature):
+    def correct_schnorr_signature(self, signature: str) -> bool:
         if len(signature) not in self.SCHNORR_SIG_LENGTHS:
             return False
 
@@ -241,7 +242,7 @@ class BitcoinPublicKeyParser:
         "Data" handling functions
     """
 
-    def add_key_to_data_dict(self, suspected_key, signature, signature_list, data_dict):
+    def add_key_to_data_dict(self, suspected_key: str, signature: str, signature_list: list, data_dict: dict) -> None:
         assert self.state["txid"] != "" and self.state["vin/vout"] != "" and self.state["n"] != -1
 
         if self.verbose:
@@ -273,7 +274,7 @@ class BitcoinPublicKeyParser:
         return True
 
 
-    def data_dict_full(self, data_dict):
+    def data_dict_full(self, data_dict: dict) -> bool:
         # Maximum key count to store in RAM before flushing to JSON. You can set much more, depends on your RAM size.
         # Average length of key record in JSON format is ~300B.
         if data_dict == self.types:
@@ -288,19 +289,19 @@ class BitcoinPublicKeyParser:
         return len(data_dict) >= max_key_count
 
 
-    def empty_data_dictionary(self, data_dict):
+    def empty_data_dictionary(self, data_dict: dict) -> None:
         keys = list(data_dict.keys())
         for key in keys:
             del data_dict[key]
         assert data_dict == {}
 
-    def empty_data_list(self, data_list):
+    def empty_data_list(self, data_list: list) -> None:
         while not len(data_list) == 0:
             data_list.pop()
         assert data_list == []
 
     # Flushes collected data to a JSON file.
-    def flush_data_dict(self, file_name, data_dict, exception):
+    def flush_data_dict(self, file_name: str, data_dict: dict, exception: bool) -> None:
         if not self.verbose and data_dict != self.types: # Change type from set to dict.
             for block, key_set in data_dict.items():
                 data_dict[block] = list(key_set)
@@ -321,7 +322,7 @@ class BitcoinPublicKeyParser:
             self.logger.info(f"Flushed to '{file_name}'.")
 
 
-    def flush_data_list(self, file_name, data_list, exception):
+    def flush_data_list(self, file_name: str, data_list: list, exception: bool) -> None:
         try:
             with open(file_name, 'w') as outfile:
                 for line in data_list:
@@ -336,7 +337,7 @@ class BitcoinPublicKeyParser:
 
     # This functions goes trough all data dictionaries and checks, whether they need to be flushed.
     # Argument <exception> is a bool value to force flushing: for example, at the very end of the script.
-    def flush_if_needed(self, n, exception):
+    def flush_if_needed(self, n: int, exception: bool) -> bool:
         to_return = False
         for dict_tup in self.DICTS: 
             if self.data_dict_full(dict_tup[0]) or (exception and dict_tup[0] != {}):
@@ -357,7 +358,7 @@ class BitcoinPublicKeyParser:
         "Extract" signature functions
     """
 
-    def extract_signature_p2pk_p2pkh(self, vin):
+    def extract_signature_p2pk_p2pkh(self, vin: dict) -> str:
 
         signature = vin['scriptSig']['hex']
         length = int(signature[:2], 16) # len of signature in bytes
@@ -369,7 +370,7 @@ class BitcoinPublicKeyParser:
         return signature
 
 
-    def extract_signature_p2wpkh(self, vin):
+    def extract_signature_p2wpkh(self, vin: dict) -> str:
         if not "txinwitness" in vin.keys() or len(vin["txinwitness"]) < 2:
             return "NaN"
 
@@ -379,7 +380,7 @@ class BitcoinPublicKeyParser:
         return signature
 
 
-    def extract_signature_p2tr(self, vin, i):
+    def extract_signature_p2tr(self, vin: dict, i: int) -> str:
         if not "txinwitness" in vin.keys() or len(vin["txinwitness"]) <= i:
             return "NaN"
 
@@ -395,7 +396,7 @@ class BitcoinPublicKeyParser:
         Serialized "Script" functions.
     """
 
-    def load_stack_helper(self, script, stack) -> tuple:
+    def load_stack_helper(self, script: str, stack: list) -> Tuple[str, list]:
         if len(script) < 2:
             return None, None
         command = script[:2]
@@ -440,7 +441,7 @@ class BitcoinPublicKeyParser:
         return script, stack
 
 
-    def load_stack(self, script, inputs):
+    def load_stack(self, script: str, inputs: list) -> list:
         stack = inputs[:]
         while script != "":
             script, stack = self.load_stack_helper(script, stack)
@@ -451,7 +452,7 @@ class BitcoinPublicKeyParser:
         return stack
 
 
-    def length_based_parse(self, stack):
+    def length_based_parse(self, stack: list) -> Tuple[list, list, list, list]:
         ecdsa_keys = []
         ecdsa_sigs = []
         schnorr_keys = []
@@ -483,7 +484,7 @@ class BitcoinPublicKeyParser:
         return ecdsa_keys, ecdsa_sigs, schnorr_keys, schnorr_sigs
 
 
-    def parse_serialized_script(self, script, inputs):
+    def parse_serialized_script(self, script: str, inputs: list) -> bool:
         stack = self.load_stack(script, inputs)
         temp_tuple = self.length_based_parse(stack)
 
@@ -521,7 +522,7 @@ class BitcoinPublicKeyParser:
     """
     # The following functions return true if at least one key was extracted.
 
-    def process_input_p2pk(self, vin):
+    def process_input_p2pk(self, vin: dict) -> bool:
         if not 'scriptSig' in vin.keys() or len(vin["scriptSig"]["asm"]) < 2: # 2nd statement is to not pass empty strings
             return False
 
@@ -539,7 +540,7 @@ class BitcoinPublicKeyParser:
         return True
 
 
-    def process_input_p2pkh(self, vin):
+    def process_input_p2pkh(self, vin: dict) -> bool:
 
         if not 'scriptSig' in vin.keys() or len(vin['scriptSig']['asm'].split(" ")) != 2:
             return False
@@ -554,7 +555,7 @@ class BitcoinPublicKeyParser:
         return True
 
 
-    def process_input_p2sh(self, vin):
+    def process_input_p2sh(self, vin: dict) -> bool:
 
         if not 'scriptSig' in vin.keys() or len(vin['scriptSig']['asm'].split(" ")) < 2:
             return False
@@ -569,7 +570,7 @@ class BitcoinPublicKeyParser:
         return self.parse_serialized_script(script, inputs)
 
 
-    def process_input_p2wpkh(self, vin):
+    def process_input_p2wpkh(self, vin: dict) -> bool:
 
         if not 'txinwitness' in vin.keys() or len(vin['txinwitness']) < 2:
             return False
@@ -584,7 +585,7 @@ class BitcoinPublicKeyParser:
         return True
 
 
-    def process_input_p2wsh(self, vin):
+    def process_input_p2wsh(self, vin: dict) -> bool:
 
         if not 'txinwitness' in vin.keys() or len(vin['txinwitness']) < 2:
             return False
@@ -596,7 +597,7 @@ class BitcoinPublicKeyParser:
 
     # You might want to read this answer from Pieter Wuille (author of P2TR).
     """ https://bitcoin.stackexchange.com/questions/107154/what-is-the-control-block-in-taproot/107159#107159 """
-    def process_input_p2tr(self, vin):
+    def process_input_p2tr(self, vin: dict) -> bool:
 
         if not 'txinwitness' in vin.keys() or len(vin['txinwitness']) == 0:
             return False
@@ -607,7 +608,7 @@ class BitcoinPublicKeyParser:
         return self.handle_p2tr_scriptpath(vin)
 
 
-    def handle_p2tr_keypath(self, vin):
+    def handle_p2tr_keypath(self, vin: dict) -> bool:
         signature = self.extract_signature_p2tr(vin, 0)
         if signature == "NaN":
             return False
@@ -631,7 +632,7 @@ class BitcoinPublicKeyParser:
         return True
 
 
-    def handle_p2tr_scriptpath(self, vin):
+    def handle_p2tr_scriptpath(self, vin: dict) -> bool:
         toreturn = False
         if len(vin['txinwitness']) < 3: # Should contain at least three things: some inputs for a script, the script and a control block.
             return toreturn
@@ -659,7 +660,7 @@ class BitcoinPublicKeyParser:
         Process "Output" functions.
     """
 
-    def process_output_p2pk(self, vout):
+    def process_output_p2pk(self, vout: dict) -> bool:
 
         if not 'scriptPubKey' in vout.keys() or len(vout['scriptPubKey']['asm'].split(" OP_CHECKSIG")) < 2:
             return False
@@ -674,7 +675,7 @@ class BitcoinPublicKeyParser:
         return True
 
 
-    def process_output_p2tr(self, vout):
+    def process_output_p2tr(self, vout: dict) -> bool:
 
         if (not "scriptPubKey" in vout.keys()) or (len(vout["scriptPubKey"]["asm"].split(' ')) != 2):
             return False
@@ -695,17 +696,16 @@ class BitcoinPublicKeyParser:
         "Main" functions
     """
 
-    def process_transaction(self, txid):
+    def process_transaction(self, txid: str) -> None:
         transaction = self.rpc.getrawtransaction(txid, True) # Getting transaction in verbose format
         self.state["txid"] = txid
         self.statistics["transactions"] += 1
 
         self.process_inputs(transaction)
         self.process_outputs(transaction)
-        return True
 
 
-    def process_inputs(self, transaction):
+    def process_inputs(self, transaction: dict) -> None:
         self.state["vin/vout"] = "vin"
         for i, vin in enumerate(transaction["vin"]):
             self.state["n"] = i
@@ -729,7 +729,7 @@ class BitcoinPublicKeyParser:
                 self.failed_inputs_list.append(self.state["txid"] + ':' + str(self.state["n"]))
 
 
-    def process_outputs(self, transaction):
+    def process_outputs(self, transaction: dict) -> None:
         self.state["vin/vout"] = "vout"
 
         month = str(datetime.fromtimestamp(transaction["time"]).strftime('%Y.%m'))
@@ -751,7 +751,7 @@ class BitcoinPublicKeyParser:
 
             self.types[month][tx_type] += 1
 
-    def process_block(self, n):
+    def process_block(self, n: int) -> None:
         block_start_time = time.perf_counter()
         keys_before = self.statistics["keys"]
 
@@ -770,7 +770,7 @@ class BitcoinPublicKeyParser:
         self.logger.debug(f"Processed block {n} in {block_end_time - block_start_time} seconds. Speed: {int((keys_after - keys_before) / (block_end_time - block_start_time))} keys/sec. ")
 
 
-    def process_block_range(self, range_to_parse):
+    def process_block_range(self, range_to_parse: range) -> None:
 
         for n in range_to_parse:
             self.process_block(n)
@@ -783,7 +783,7 @@ class BitcoinPublicKeyParser:
         self.print_statistics()
 
 
-    def process_range_in_multiprocess(self, block_from, block_to, parser_count = 10):
+    def process_range_in_multiprocess(self, block_from: int, block_to: int, parser_count: int = 10) -> None:
         rpc = BitcoinRPC()
         parsers = [BitcoinPublicKeyParser(rpc) for i in range(parser_count)]
         processes = []
@@ -799,7 +799,7 @@ class BitcoinPublicKeyParser:
             process.join()
 
 
-    def process_upon_a_new_block(self, block_from, sleep_sec = 10):
+    def process_upon_a_new_block(self, block_from: int, sleep_sec: int = 10) -> None:
         self.logger.setLevel(logging.DEBUG)
         last_parsed_block = block_from
 
