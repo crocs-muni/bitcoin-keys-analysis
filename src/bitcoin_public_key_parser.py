@@ -14,7 +14,6 @@ from multiprocessing import Process # parallelization
 
 class BitcoinRPC:
     bitcoin.SelectParams("mainnet")
-    #  |  __init__(self, service_url=None, service_port=None, btc_conf_file=None, timeout=30, **kwargs)
     rpc = bitcoin.rpc.RawProxy() # RawProxy takes commands in hexa strings instead of structs, that is what we need
 
 
@@ -24,8 +23,7 @@ class BitcoinPublicKeyParser:
         "Constants"
     """
 
-    import op_codes
-    OP_CODES = op_codes.OP_CODES
+    from op_codes import OP_CODES
 
 
     ECDSA_SIG_LENGTHS = (146, 144, 142, 140, 138)   # Lengths of symbols in hex-encoded string. Divide by two and get number of bytes.
@@ -97,7 +95,7 @@ class BitcoinPublicKeyParser:
         self.types = {}
 
         self.verbose = False
-        self.logger.info(f"Verbosity has been set to {self.verbose}. Change it with BitcoinPublicKeyParser.set_verbosity().")
+        self.logger.info(f"Verbosity has been set to {self.verbose}. You can change it with BitcoinPublicKeyParser.set_verbosity().")
 
         self.ecdsa_data = {}
         self.unmatched_ecdsa_data = {}
@@ -217,7 +215,7 @@ class BitcoinPublicKeyParser:
         if signature[:2] != "30" or signature[4:6] != "02":
             return False
 
-        if signature[2] != '4': # Length of following data in one byte. Just check that it's about 0x40.
+        if signature[2] != '4': # Length of following data in one byte. Just check that it's around 0x40.
             return False
 
         return True
@@ -274,19 +272,17 @@ class BitcoinPublicKeyParser:
         return True
 
 
+    # Tells whether it's time to flush from RAM to disk.
+    # Set corresponding parts in the config file depending on your RAM size.
     def data_dict_full(self, data_dict: dict) -> bool:
-        # Maximum key count to store in RAM before flushing to JSON. You can set much more, depends on your RAM size.
-        # Average length of key record in JSON format is ~300B.
+        assert "RAM_USAGE" in self.config.sections()
         if data_dict == self.types:
-            max_month_count = 7
-            return len(data_dict) >= max_month_count
+            return len(data_dict) >= int(self.config["RAM_USAGE"]["max_month_tx_types"])
 
         if not self.verbose:
-            max_block_count = 200
-            return len(data_dict) >= max_block_count
+            return len(data_dict) >= int(self.config["RAM_USAGE"]["max_block_count_not_verbose"])
 
-        max_key_count = 10000
-        return len(data_dict) >= max_key_count
+        return len(data_dict) >= int(self.config["RAM_USAGE"]["max_key_count_verbose"])
 
 
     def empty_data_dictionary(self, data_dict: dict) -> None:
@@ -301,7 +297,7 @@ class BitcoinPublicKeyParser:
         assert data_list == []
 
     # Flushes collected data to a JSON file.
-    def flush_data_dict(self, file_name: str, data_dict: dict, exception: bool) -> None:
+    def flush_data_dict(self, file_name: str, data_dict: dict, force: bool) -> None:
         if not self.verbose and data_dict != self.types: # Change type from set to dict.
             for block, key_set in data_dict.items():
                 data_dict[block] = list(key_set)
@@ -311,7 +307,7 @@ class BitcoinPublicKeyParser:
                 json.dump(data_dict, outfile, indent = 2)
         except:
             self.logger.exception("Couldn't flush a dictionary to file.")
-            if exception:
+            if force:
                 self.logger.error(f"Dictionary: {data_dict}.")
 
             if not self.verbose and data_dict != self.types: # Change type back to set.
@@ -322,33 +318,32 @@ class BitcoinPublicKeyParser:
             self.logger.info(f"Flushed to '{file_name}'.")
 
 
-    def flush_data_list(self, file_name: str, data_list: list, exception: bool) -> None:
+    def flush_data_list(self, file_name: str, data_list: list, force: bool) -> None:
         try:
             with open(file_name, 'w') as outfile:
                 for line in data_list:
                     outfile.write(line + '\n')
         except:
             self.logger.exception("Couldn't flush a list to file.")
-            if exception:
+            if force:
                 self.logger.error(f"List: {data_list}.")
         else:
             self.empty_data_list(data_list)
             self.logger.info(f"Flushed to '{file_name}'.")
 
     # This functions goes trough all data dictionaries and checks, whether they need to be flushed.
-    # Argument <exception> is a bool value to force flushing: for example, at the very end of the script.
-    def flush_if_needed(self, n: int, exception: bool) -> bool:
+    def flush_if_needed(self, n: int, force: bool) -> bool:
         to_return = False
         for dict_tup in self.DICTS: 
-            if self.data_dict_full(dict_tup[0]) or (exception and dict_tup[0] != {}):
+            if self.data_dict_full(dict_tup[0]) or (force and dict_tup[0] != {}):
                 file_name = f"{self.config[self.config_section]['gathered_data_dir']}/{dict_tup[1]}_{str(n)}.json"
-                self.flush_data_dict(file_name, dict_tup[0], exception)
+                self.flush_data_dict(file_name, dict_tup[0], force)
                 to_return = True
 
         for list_tup in self.LISTS:
-            if self.data_dict_full(list_tup[0]) or (exception and list_tup[0] != []):
+            if self.data_dict_full(list_tup[0]) or (force and list_tup[0] != []):
                 file_name = f"{self.config[self.config_section]['gathered_data_dir']}/{list_tup[1]}_{str(n)}.json"
-                self.flush_data_list(file_name, list_tup[0], exception)
+                self.flush_data_list(file_name, list_tup[0], force)
                 to_return = True
 
         return to_return
@@ -412,12 +407,11 @@ class BitcoinPublicKeyParser:
         try:
             int(command, 16)
         except:
-            #self.logger.debug(f"Invalid script command '{command}'.")
             return None, None
 
-        length = int(command, 16) # Length in bytes
-        if length < 76: # For values bigger than 76 bytes OP_PUSHDATA codes are used.
-            length *= 2 # One byte is two letters in hex-encoded strings.
+        length = int(command, 16)   # Length in bytes.
+        if length < 76:             # For values bigger than 76 bytes OP_PUSHDATA codes are used.
+            length *= 2             # One byte is two letters in hex-encoded strings.
             stack.append(script[:length])
             script = script[length:]
             return script, stack
@@ -433,7 +427,7 @@ class BitcoinPublicKeyParser:
             length = int(script[:8], 16) * 2
             script = script[8:]
 
-        if len(script) < length: # Supposed to never happen, but just to be sure.
+        if len(script) < length:    # Supposed to never happen, but just to be sure.
             return None, None
 
         stack.append(script[:length])
@@ -479,8 +473,6 @@ class BitcoinPublicKeyParser:
                 schnorr_sigs.append(item)
                 continue
 
-            #self.logger.debug(f"Unknown stack item '{item}'.")
-
         return ecdsa_keys, ecdsa_sigs, schnorr_keys, schnorr_sigs
 
 
@@ -523,11 +515,11 @@ class BitcoinPublicKeyParser:
     # The following functions return true if at least one key was extracted.
 
     def process_input_p2pk(self, vin: dict) -> bool:
-        if not 'scriptSig' in vin.keys() or len(vin["scriptSig"]["asm"]) < 2: # 2nd statement is to not pass empty strings
+        if not 'scriptSig' in vin.keys() or len(vin["scriptSig"]["asm"]) < 2:   # 2nd statement is to not pass empty strings
             return False
 
         signature = self.extract_signature_p2pk_p2pkh(vin)
-        if signature == "NaN": # If there is no signature, there is no sense in looking up the corresponding public key.
+        if signature == "NaN":  # If there is no signature, there is no sense in looking up the corresponding public key.
             return False
 
         vout = self.get_previous_vout(vin)
@@ -561,7 +553,7 @@ class BitcoinPublicKeyParser:
             return False
 
         temp_stack = self.load_stack(vin['scriptSig']['hex'], [])
-        temp_stack.reverse() # Later load_stack will be called again from parse_serialized_script(), so "unreverse" now.
+        temp_stack.reverse()    # Later load_stack will be called again from parse_serialized_script(), so "unreverse" now.
         if len(temp_stack) < 2:
             return False
 
@@ -595,7 +587,7 @@ class BitcoinPublicKeyParser:
         return self.parse_serialized_script(script, inputs)
 
 
-    # You might want to read this answer from Pieter Wuille (author of P2TR).
+    # Logic of this function is based on this answer from Pieter Wuille (author of P2TR).
     """ https://bitcoin.stackexchange.com/questions/107154/what-is-the-control-block-in-taproot/107159#107159 """
     def process_input_p2tr(self, vin: dict) -> bool:
 
@@ -615,9 +607,9 @@ class BitcoinPublicKeyParser:
 
         vout = self.get_previous_vout(vin)
 
-        if "scriptPubKey" not in vout.keys():
-            return False                                                    # This two if's are not necessary,
-                                                                            # but if you are as pedantic as I am, you can leave them.
+        if "scriptPubKey" not in vout.keys():   # This two if's are just to be sure.
+            return False
+
         if vout["scriptPubKey"]["type"] != "witness_v1_taproot":
             return False
 
