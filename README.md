@@ -15,8 +15,8 @@ A set of tools for extraction and analysis of Bitcoin ECDSA and Schnorr keys.
 
 ``` python
 $ python3 -i src/bitcoin_public_key_parser.py
+>>> parser.show_dict(parser.schnorr_data)
 >>> parser.process_transaction("37777defed8717c581b4c0509329550e344bdc14ac38f71fc050096887e535c8")
-True
 >>> parser.show_dict(parser.schnorr_data)
 ```
 ``` JSON
@@ -44,63 +44,84 @@ True
   ]
 }
 ```
-#### BitcoinPublicKeyParser.process_blocks(self, start: int, end: int)
+#### BitcoinPublicKeyParser.process_block_range(self, range_to_parse: range)
+
+###### Verbosity set to `False`
 
 ``` python
 $ python3 -i src/bitcoin_public_key_parser.py
->>> parser.process_blocks(739000, 739001)
+>>> parser.process_block_range(range(739000, 739010))
 
 ==================================================================================================================================================
-Gathered  4867  keys:  4839  ECDSA keys,  28  Schnorr Signature keys; in  5.632800183999279  seconds.
-Failed to parse  0  inputs ( 0.00 %) and  0  outputs ( 0.00 %).
+Gathered  62032  keys:  61861  ECDSA keys,  171  Schnorr Signature keys; in  68.78719115257263  seconds.
+Failed to parse  1  inputs ( 0.00 %) and  0  outputs ( 0.00 %).
 ==================================================================================================================================================
 ```
 ``` bash
-$ head gathered-data/ecdsa_data_739000.json
+$ head gathered-data/ecdsa_data_739009.json
 ```
 ``` JSON
 {
-  "02018eb32174d67f3d247101d2ee3f9558dff7a5ea035ce9440f2dbb4b455ec5e9": [
+  "739000": [
+    "029f19fe3201234ea81fb0db2459ad78f86971668f7118c1ee70a12ec49bb21915",
+    "0351aa078f904d05cfbf8f6a6d5b77e080b81af5ff14300828741af23849e11a8c",
+    "022b3d369293d1c9ca5653b60dea0aeb6ef28f4cf485d09ec25b55822aaa610b28",
+    "034b550906409eda781e79003279f1594d34919c92faafb9a47f3fcc519c989bbb",
+    "03aade021abde36ef17d001533c5a8cd9dd21356f79329a1bc0cd40c9d8d5a390d",
+    "024662046ed73f537c4494260f4936345aac50bfd76294e2a55bba1ea3e8e16860",
+    "027df847463af80a068ff276d5216369b7976d196ed0c264639b8833b2e8322fbd",
+    "0280e00bfdc1cee0b876deb9239db081f2b97920d97ed48462bc051ff4d5b8485f",
+```
+
+###### Verbosity set to `True`
+
+``` python
+$ python3 -i src/bitcoin_public_key_parser.py
+>>> parser.set_verbosity(True)
+>>> parser.process_block_range(range(739000, 739010))
+
+==================================================================================================================================================
+Gathered  60756  keys:  60593  ECDSA keys,  163  Schnorr Signature keys; in  65.47546219825745  seconds.
+Failed to parse  1  inputs ( 0.00 %) and  0  outputs ( 0.00 %).
+==================================================================================================================================================
+```
+``` bash
+$ head gathered-data/ecdsa_data_739009.json
+```
+``` JSON
+{
+  "02f0f594ad1df6c82ea1daf34fe1d979acb10430120a16a8021b5f6b0c2ae7edb0": [
     {
-      "ID": "13cd6e3ae96a85bb567a681fbb339719d030cf7d8936cdfc6803069b42774052",
+      "ID": "210fcdcfd6c1115716a0ac0f8a0d889f1c2e8360636f001b051081d067cfe2f0",
       "vin/vout": "vin 0",
-      "signature": "3045022100e4a220aa4d951c3d94af03adc9b5cd2e41d2bc96747c11b00ee817b79526f0ca02200f1bb4ac9c3c4a8beb4ac271efa946e02f226c5d14283a17fac686072bded2f401"
+      "signature": "30440220099c34e83b91334882eb3871d2dd68e94a97e845a42893a14a45bb730120b9e502202b11dba6dc8a62f2ec14d4bdfb0ca06461ee5f0814ba020b5b0bf278b5c7e33301"
     }
   ],
-  "03e77710452b490c0e0bddbe1aa06d4f373bfceb1c7fb4797430739ec965a49faf": [
+  "037381cb6c6a7c5bf7d9576055c4ad4401d609f8a1ebd1837e9d6a685b0bd98b4b": [
     {
 ```
 ``` bash
-$ head gathered-data/unmatched_ecdsa_data_739000.json
+$ cat gathered-data/tx_types_739009.json
 ```
 ``` JSON
 {
-  "0375e00eb72e29da82b89367947f29ef34afb75e8654f6ea368e0acdfd92976b7c": [
-    {
-      "ID": "cbcb20d5e883a3b4590d024c9b722313f0686813ecd3999cdc633af11ab7e197",
-      "vin/vout": "vin 0",
-      "signatures": [
-        "304402207e7181c972e85e786e7dbdb7f26767fd5f46e1d2ab8f7054ff63231fc371c15202201abcded110359062a5a6154883965bd5395aa2437b53e1464280f41fc10ad67701",
-        "30440220785586b83592e6f4766b487bcf784804c0cbf3186e668827f52f47c662df95510220254876aa0bf800275e78720cdd6e06b9ca9d444a29cf69959d97798556878c0801"
-      ]
-    },
+  "2022.06": {
+    "nonstandard": 0,
+    "pubkey": 0,
+    "pubkeyhash": 21843,
+    "scripthash": 35993,
+    "multisig": 0,
+    "nulldata": 123,
+    "witness_v0_scripthash": 3534,
+    "witness_v0_keyhash": 38032,
+    "witness_v1_taproot": 92,
+    "witness_unknown": 0
+  }
+}
 ```
-``` bash 
-$ head gathered-data/schnorr_data_739000.json
-```
-``` JSON
-{
-  "188d3a331f7683314047e5159b7d43df12d692ae957841d1d23c13a31732504d": [
-    {
-      "ID": "ef2dc75126f1a3a1a08b8630b0a1ef6de10742db9db96573d294423da926bb82",
-      "vin/vout": "vin 0",
-      "signature": "NaN"
-    }
-  ],
-  "6ea0037df9f8708723834c93b9f0b1cc558be0e394aa22be9e841ae8e871f890": [
-    {
-```
-If you feel interested at this point, look through [bitcoin_public_key_parser.py](src/bitcoin_public_key_parser.py) file to see, what other functions are there.
+
+
+If you feel interested at this point, look through [bitcoin_public_key_parser.py](src/bitcoin_public_key_parser.py) file to see, what other functions are there (most useful ones are at the end).
 
 ## Getting Started
 ### Prerequisites
@@ -124,9 +145,21 @@ To use the extraction part of our project ([bitcoin_public_key_parser.py](src/bi
     
     `cd bitcoin-keys-analysis/`
 
-3. Do the instructions from [block_internet.md](other/block_internet.md) to be able to block Bitcoin Core's access to the internet, when you need to.
+3. Set up a config file
 
-4. Enable RPC server in bitcoin.conf:
+    1. Copy default config to your `~/.config` directory.
+
+        `cp other/bitcoin_public_key_parser.ini ~/.config`
+
+    2. Change `project_dir` value (4th line) to an actual absolute path to the project's directory.
+
+        `nano ~/.config/bitcoin_public_key_parser.ini`
+
+    **Note**: later you might need to adjust values in `[RAM_USAGE]` section, but for now, you do not need to care about it. 
+
+4. Do the instructions from [block_internet.md](other/block_internet.md) to be able to block Bitcoin Core's access to the internet, when you need to.
+
+5. Enable RPC server in bitcoin.conf:
 
    `cd ~`
    
@@ -143,7 +176,7 @@ To use the extraction part of our project ([bitcoin_public_key_parser.py](src/bi
    `echo "rpcpassword=password" >> bitcoin.conf`
 
 
-5. Run a Bitcoin Core daemon.
+6. Run a Bitcoin Core daemon.
     Now there are some options in what way you get Bitcoin blocks:
   
     1. Run `bitcoind -daemon` command. This will start [Initial Block Download](https://bitcoin.org/en/full-node#initial-block-downloadibd) process and the daemon will continuously download blocks. The downloading will carry on while daemon runs (use `bitcoin-cli stop` to stop it) and while it has access to the internet. This is the way Bitcoin Core developers expect you to get blocks, but be careful, because you might run out of disk space really quick or use more network traffic that you'd want to. To avoid this take a look at the second option.
@@ -164,16 +197,17 @@ To use the extraction part of our project ([bitcoin_public_key_parser.py](src/bi
 
     3. As a third option, you might also normally run `bitcoind` (with no `-daemon` to see progress) and when enough blocks will be downloaded stop it and then re-run it without internet access.
 
-6. **Check-list**:
+7. **Check-list**:
 
     - python3
     - python-bitcoinlib (installed python3 module)
+    - Config file in `~/.config` directory
     - Bitcoin Core Daemon (you are able to run `bitcoind` in terminal)
     - Some amount of blocks downloaded (in `~/.bitcoin` directry) 
     - Enabled RPC server (corresponding `~/.bitcoin/bitcoin.conf` file)
-    - Completed instructions from [block_internet.md](other/block_internet.md) (optional, but strongly recommended)
+    - Completed instructions from [block_internet.md](other/block_internet.md) (optional, but recommended)
 
-7. You are ready to go! Try to run `./demo.py` in the project's src directory.
+8. You are ready to go! Try to run `./demo.py` in the project's src directory.
 
 ## For Developers
 To run tests a one will need to install [pytest](https://docs.pytest.org/en/7.1.x/getting-started.html) python3 module.
