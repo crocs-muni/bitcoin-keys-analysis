@@ -131,7 +131,16 @@ class BitcoinPublicKeyParser:
             print("=============")
 
     def show_dict(self, dictionary: dict) -> None:
+        if not self.verbose:
+            for block_n, key_set in dictionary.items(): # convert sets to lists
+                dictionary[block_n] = list(key_set)
+
         print(json.dumps(dictionary, indent = 2))
+
+        if not self.verbose:
+            for block_n, key_list in dictionary.items(): # convert lists back to sets
+                dictionary[block_n] = set(key_list)
+
 
     def print_speed(self) -> None:
         print("Speed: {:0.2f} keys/sec".format(self.statistics["keys"]/(time.time() - self.start_time)))
