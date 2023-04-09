@@ -121,7 +121,7 @@ $ cat gathered-data/tx_types_739009.json
 ```
 
 
-If you feel interested at this point, look through [bitcoin_public_key_parser.py](src/bitcoin_public_key_parser.py) file to see, what other functions are there (most useful ones are at the end).
+If you feel interested at this point, have a look at [demo.txt][other/demo.txt] or look through [bitcoin_public_key_parser.py](src/bitcoin_public_key_parser.py) file to see, what other functions are there (most useful ones are at the end).
 
 ## Getting Started
 ### Prerequisites

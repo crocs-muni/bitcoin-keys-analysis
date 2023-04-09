@@ -1,0 +1,73 @@
+
+Hi, we appreciate your interest in our project!
+Let us show you a couple of examples on how you can use the script.
+
+    - BitcoinPublicKeyParser.process_transaction(self, txid: str)
+
+    Main goal of this function is to extract all the public keys envolved in the transaction specified in <txid> argument.
+    Try to run the following:
+
+        parser.process_transaction('0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098')
+        parser.show_dict(parser.ecdsa_data) # prints out the dictionary in a readable way with JSON indent.
+
+    - BitcoinPublicKeyParser.process_block(self, n: int)
+
+    This function simply calls <BitcoinPublicKeyParser.process_transaction()> function for all transactions in block of height <n>.
+
+    - BitcoinPublicKeyParser.process_block_range(self, range_to_parse: range)
+
+    This function calls <BitcoinPublicKeyParser.process_block()> for all blocks in the specified range and flushes the collected data to .json and .txt files (to <gathered-data> subdirectory).
+    Try to run the following:
+
+        parser.process_block_range(range(1, 100))
+
+    And then have a look into <gathered-data> subdirectory.
+
+    - BitcoinPublicKeyParser.process_range_in_multiprocess(self, block_from: int, block_to: int, parser_count: int = 10)
+
+    Just like the name says, this function processes a block range in multiple processes. However, it's a primitive multiproccessing: it just calls <BitcoinPublicKeyParser.process_block_range()> in a such way that the tasks for each individual process don't overlap.
+
+This are the main functions that we expect you to use. You can discover more by looking through the source code of the script.
+You can also implement other functionality on top of what we've done.
+
+
+Now lets talk about the output format. The keys will be saved in the following Python dictionaries which can later be dumped into a JSON file:
+
+        BitcoinPublicKeyParser.ecdsa_data,
+        BitcoinPublicKeyParser.unmatched_ecdsa_data,
+        BitcoinPublicKeyParser.schnorr_data,
+        BitcoinPublicKeyParser.unmatched_schnorr_data
+
+    depending on the type of the public key and amount of corresponding signatures.
+    <unmatched> in name of a dictionary means that the script can't be sure which of the found signatures corresponds to the key.
+
+Now, you also need to know is that there are two modes of parsing: with verbosity set to True and with verbosity set to False.
+With verbosity set to False abovementioned dictionaries are of format
+
+    {
+        'number of block': [list of all keys found in the block],
+        ...
+    }
+
+With verbosity set to True the format is the following:
+
+    {
+        'found public key': [
+            {
+                'ID': 'ID of a transaction, in which this key was found',
+                'vin/vout': ' where exactly in the transaction',
+                'signature': 'corresponding signature or NaN'
+            },
+            {
+                ..other occuerencies of this key..
+            },
+            ...
+        ]
+        ..further keys..
+    }
+
+To change verbosity use BitcoinPublicKeyParser.set_verbosity() function. By default verbosity is set to False.
+
+The last thing you need to now is that there is also a BitcoinPublicKeyParser.types dictionary, which contains information about how many transactions there were in a given month and of what types. Try to parse something and have a look inside it!
+
+That's it! GLHF!
