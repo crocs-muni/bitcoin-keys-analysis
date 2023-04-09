@@ -14,7 +14,9 @@ from multiprocessing import Process # parallelization
 
 class BitcoinRPC:
     bitcoin.SelectParams("mainnet")
-    rpc = bitcoin.rpc.RawProxy() # RawProxy takes commands in hexa strings instead of structs, that is what we need
+
+    def __init__(self, rpc_timeout: int = 30):
+        self.rpc = bitcoin.rpc.RawProxy(timeout=rpc_timeout) # RawProxy takes commands in hexa strings instead of structs, that is what we need
 
 
 class BitcoinPublicKeyParser:
@@ -800,15 +802,20 @@ class BitcoinPublicKeyParser:
             process.join()
 
 
-    def process_upon_a_new_block(self, block_from: int, sleep_sec: int = 10) -> None:
+    def process_upon_a_new_block(self, block_from: int, sleep_sec: int = 10, max_failure: int = 10) -> None:
         self.logger.setLevel(logging.DEBUG)
         last_parsed_block = block_from
+        fails = 0
 
         while True:
             try:
                 block_tip = self.rpc.getblockcount()
+
             except Exception as e:
                 self.logger.exception("Something went wrong when calling RPC getblockcount.")
+                fails += 1
+                if max_failure != 0 and fails >= max_failure:
+                    break
                 continue
 
             if block_tip <= last_parsed_block:
@@ -819,6 +826,10 @@ class BitcoinPublicKeyParser:
             last_parsed_block += 1
             self.flush_if_needed(last_parsed_block, True)
 
+        self.logger.critical("Exceeded maximum failure limit on RPC calls.")
+
+
 if __name__ == "__main__":
-    rpc = BitcoinRPC()
+    rpc = BitcoinRPC(rpc_timeout = 2 ** 16)
     parser = BitcoinPublicKeyParser(rpc)
+    parser.process_upon_a_new_block(780000)
