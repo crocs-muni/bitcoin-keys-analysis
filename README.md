@@ -2,6 +2,8 @@
 
 A set of tools for extraction and analysis of Bitcoin ECDSA and Schnorr keys.
 
+You can see achieved results in the [results repo](https://github.com/crocs-muni/bitcoin-keys-analysis-results-).
+
 (!) Please note that currently ***only extraction part*** is implemented and fully working.
 
 ## Navigation
@@ -121,7 +123,7 @@ $ cat gathered-data/tx_types_739009.json
 ```
 
 
-If you feel interested at this point, have a look at [demo.txt][other/demo.txt] or look through [bitcoin_public_key_parser.py](src/bitcoin_public_key_parser.py) file to see, what other functions are there (most useful ones are at the end).
+If you feel interested at this point, have a look at [demo.txt](other/demo.txt) or look through [bitcoin_public_key_parser.py](src/bitcoin_public_key_parser.py) file to see, what other functions are there (most useful ones are at the end).
 
 ## Getting Started
 ### Prerequisites
@@ -157,9 +159,19 @@ To use the extraction part of our project ([bitcoin_public_key_parser.py](src/bi
 
     **Note**: later you might need to adjust values in `[RAM_USAGE]` section, but for now, you do not need to care about it. 
 
-4. Do the instructions from [block_internet.md](other/block_internet.md) to be able to block Bitcoin Core's access to the internet, when you need to.
+4. Create directories for gathered data and logs.
 
-5. Enable RPC server in bitcoin.conf:
+     1. If you *did not* change any values in the config file except of `project_dir` inside of `[PATHS]` section, run the following commands in the project directory:
+
+        `mkdir gathered-data`
+
+        `mkdir logs`
+
+     2. If you *did* change paths to gathered data and log directories in the config file, you should ensure that this paths are valid (specified directories must exist).
+
+5. Do the instructions from [block_internet.md](other/block_internet.md) to be able to block Bitcoin Core's access to the internet, when you need to.
+
+6. Enable RPC server in bitcoin.conf:
 
    `cd ~`
    
@@ -176,7 +188,7 @@ To use the extraction part of our project ([bitcoin_public_key_parser.py](src/bi
    `echo "rpcpassword=password" >> bitcoin.conf`
 
 
-6. Run a Bitcoin Core daemon.
+7. Run a Bitcoin Core daemon.
     Now there are some options in what way you get Bitcoin blocks:
   
     1. Run `bitcoind -daemon` command. This will start [Initial Block Download](https://bitcoin.org/en/full-node#initial-block-downloadibd) process and the daemon will continuously download blocks. The downloading will carry on while daemon runs (use `bitcoin-cli stop` to stop it) and while it has access to the internet. This is the way Bitcoin Core developers expect you to get blocks, but be careful, because you might run out of disk space really quick or use more network traffic that you'd want to. To avoid this take a look at the second option.
@@ -197,17 +209,18 @@ To use the extraction part of our project ([bitcoin_public_key_parser.py](src/bi
 
     3. As a third option, you might also normally run `bitcoind` (with no `-daemon` to see progress) and when enough blocks will be downloaded stop it and then re-run it without internet access.
 
-7. **Check-list**:
+8. **Check-list**:
 
     - python3
     - python-bitcoinlib (installed python3 module)
     - Config file in `~/.config` directory
+    - Directories for gathered data and logs exist.
     - Bitcoin Core Daemon (you are able to run `bitcoind` in terminal)
     - Some amount of blocks downloaded (in `~/.bitcoin` directry) 
     - Enabled RPC server (corresponding `~/.bitcoin/bitcoin.conf` file)
     - Completed instructions from [block_internet.md](other/block_internet.md) (optional, but recommended)
 
-8. You are ready to go! Try to run `./demo.py` in the project's src directory.
+9. You are ready to go! Try to run `./demo.py` in the project's src directory.
 
 ## For Developers
 To run tests a one will need to install [pytest](https://docs.pytest.org/en/7.1.x/getting-started.html) python3 module.
