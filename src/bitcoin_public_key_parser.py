@@ -12,6 +12,42 @@ from typing import Tuple            # type hints
 from multiprocessing import Process # parallelization
 
 
+CONFIG_SECTION = (
+        "TEST_PATHS" if ("PYTEST_BITCOIN_PUBLIC_KEY_PARSER" in os.environ.keys() and
+                         os.environ["PYTEST_BITCOIN_PUBLIC_KEY_PARSER"] == "1")
+        else "PATHS")
+
+"""
+    Load "Config"
+"""
+
+assert CONFIG_SECTION == "PATHS" or CONFIG_SECTION == "TEST_PATHS"
+
+config = configparser.ConfigParser()
+config.read(os.getenv("HOME") + "/.config/bitcoin_public_key_parser.ini")
+assert CONFIG_SECTION in config.sections()
+assert {"log_file", "gathered_data_dir"}.issubset(set(config[CONFIG_SECTION].keys()))
+
+
+"""
+    Set up "Logger"
+"""
+
+logger = logging.getLogger(__name__)
+
+file_handler = logging.FileHandler(config[CONFIG_SECTION]["log_file"])
+file_handler.setLevel(logging.INFO)
+formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(process)d | %(message)s | %(funcName)s | %(lineno)d")
+file_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.setLevel(logging.INFO)
+
+
+"""
+    JSON "RPC" server
+"""
+
 class BitcoinRPC:
     bitcoin.SelectParams("mainnet")
 
@@ -43,39 +79,7 @@ class BitcoinPublicKeyParser:
         "Constructor"
     """
 
-    def __init__(self, BitcoinRPC: object, config_section: str = "PATHS"):
-
-        """
-            Load "Config"
-        """
-
-        assert config_section == "PATHS" or config_section == "TEST_PATHS"
-        self.config_section = config_section
-
-        self.config = configparser.ConfigParser()
-        self.config.read(os.getenv("HOME") + "/.config/bitcoin_public_key_parser.ini")
-        assert self.config_section in self.config.sections()
-        assert {"log_file", "gathered_data_dir"}.issubset(set(self.config[self.config_section].keys()))
-
-
-        """
-            Set up "Logger"
-        """
-
-        self.logger = logging.getLogger(__name__)
-
-        file_handler = logging.FileHandler(self.config[self.config_section]["log_file"])
-        file_handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(process)d | %(message)s | %(funcName)s | %(lineno)d")
-        file_handler.setFormatter(formatter)
-
-        self.logger.addHandler(file_handler)
-        self.logger.setLevel(logging.INFO)
-
-
-        """
-            Actual "Parsing-related" stuff
-        """
+    def __init__(self, BitcoinRPC: object):
 
         self.rpc = BitcoinRPC.rpc
         self.state = {"block": -1, "txid": "", "vin/vout": "", "n": -1} # Holds info about what is currently being parsed.
@@ -97,7 +101,7 @@ class BitcoinPublicKeyParser:
         self.types = {}
 
         self.verbose = False
-        self.logger.info(f"Verbosity has been set to {self.verbose}. You can change it with BitcoinPublicKeyParser.set_verbosity().")
+        logger.info(f"Verbosity has been set to {self.verbose}. You can change it with BitcoinPublicKeyParser.set_verbosity().")
 
         self.ecdsa_data = {}
         self.unmatched_ecdsa_data = {}
@@ -188,7 +192,7 @@ class BitcoinPublicKeyParser:
     def set_verbosity(self, verbose: bool) -> None:
         assert type(verbose) == bool
         self.verbose = verbose
-        self.logger.info(f"Verbosity has been set to {self.verbose}. All dictionaries were reset.")
+        logger.info(f"Verbosity has been set to {self.verbose}. All dictionaries were reset.")
 
         self.types = {}
         self.ecdsa_data = {}
@@ -272,7 +276,7 @@ class BitcoinPublicKeyParser:
 
         block = self.state["block"]
         if block == -1:
-            self.logger.warning(f"It looks like you are using BitcoinPublicKeyParser.process_transaction() with parser's verbosity set to False. You might want to set it to True with BitcoinPublicKeyParser.set_verbosity().")
+            logger.warning(f"It looks like you are using BitcoinPublicKeyParser.process_transaction() with parser's verbosity set to False. You might want to set it to True with BitcoinPublicKeyParser.set_verbosity().")
 
         if block not in data_dict.keys():
             data_dict[block] = set()
@@ -286,14 +290,14 @@ class BitcoinPublicKeyParser:
     # Tells whether it's time to flush from RAM to disk.
     # Set corresponding parts in the config file depending on your RAM size.
     def data_dict_full(self, data_dict: dict) -> bool:
-        assert "RAM_USAGE" in self.config.sections()
+        assert "RAM_USAGE" in config.sections()
         if data_dict == self.types:
-            return len(data_dict) >= int(self.config["RAM_USAGE"]["max_month_tx_types"])
+            return len(data_dict) >= int(config["RAM_USAGE"]["max_month_tx_types"])
 
         if not self.verbose:
-            return len(data_dict) >= int(self.config["RAM_USAGE"]["max_block_count_not_verbose"])
+            return len(data_dict) >= int(config["RAM_USAGE"]["max_block_count_not_verbose"])
 
-        return len(data_dict) >= int(self.config["RAM_USAGE"]["max_key_count_verbose"])
+        return len(data_dict) >= int(config["RAM_USAGE"]["max_key_count_verbose"])
 
 
     def empty_data_dictionary(self, data_dict: dict) -> None:
@@ -317,16 +321,20 @@ class BitcoinPublicKeyParser:
             with open(file_name, 'w') as outfile:
                 json.dump(data_dict, outfile, indent = 2)
         except:
-            self.logger.exception("Couldn't flush a dictionary to file.")
+            logger.exception("Couldn't flush a dictionary to file.")
             if force:
-                self.logger.error(f"Dictionary: {data_dict}.")
+                logger.error(f"Dictionary: {data_dict}.")
 
             if not self.verbose and data_dict != self.types: # Change type back to set.
                 for block, key_list in data_dict.items():
                     data_dict[block] = set(key_list)
         else:
             self.empty_data_dictionary(data_dict)
-            self.logger.info(f"Flushed to '{file_name}'.")
+
+            #logger.info(f"Flushed to '{file_name}'.")
+            # When parsing a large range of blocks level of this debug message should be info,
+            #   when parsing upon a new block - debug.
+            logger.debug(f"Flushed to '{file_name}'.")
 
 
     def flush_data_list(self, file_name: str, data_list: list, force: bool) -> None:
@@ -335,25 +343,29 @@ class BitcoinPublicKeyParser:
                 for line in data_list:
                     outfile.write(line + '\n')
         except:
-            self.logger.exception("Couldn't flush a list to file.")
+            logger.exception("Couldn't flush a list to file.")
             if force:
-                self.logger.error(f"List: {data_list}.")
+                logger.error(f"List: {data_list}.")
         else:
             self.empty_data_list(data_list)
-            self.logger.info(f"Flushed to '{file_name}'.")
+
+            #logger.info(f"Flushed to '{file_name}'.")
+            # When parsing a large range of blocks level of this debug message should be info,
+            #   when parsing upon a new block - debug.
+            logger.debug(f"Flushed to '{file_name}'.")
 
     # This functions goes trough all data dictionaries and checks, whether they need to be flushed.
     def flush_if_needed(self, n: int, force: bool) -> bool:
         to_return = False
         for dict_tup in self.DICTS: 
             if self.data_dict_full(dict_tup[0]) or (force and dict_tup[0] != {}):
-                file_name = f"{self.config[self.config_section]['gathered_data_dir']}/{dict_tup[1]}_{str(n)}.json"
+                file_name = f"{config[CONFIG_SECTION]['gathered_data_dir']}/{dict_tup[1]}_{str(n)}.json"
                 self.flush_data_dict(file_name, dict_tup[0], force)
                 to_return = True
 
         for list_tup in self.LISTS:
             if self.data_dict_full(list_tup[0]) or (force and list_tup[0] != []):
-                file_name = f"{self.config[self.config_section]['gathered_data_dir']}/{list_tup[1]}_{str(n)}.json"
+                file_name = f"{config[CONFIG_SECTION]['gathered_data_dir']}/{list_tup[1]}_{str(n)}.json"
                 self.flush_data_list(file_name, list_tup[0], force)
                 to_return = True
 
@@ -750,7 +762,7 @@ class BitcoinPublicKeyParser:
 
             tx_type = vout["scriptPubKey"]["type"]
             if tx_type not in self.INIT_TYPES_DICT.keys():
-                self.logger.warning(f"Unknown transaction type '{tx_type}' in {transaction['txid']}:{i}.")
+                logger.warning(f"Unknown transaction type '{tx_type}' in {transaction['txid']}:{i}.")
 
             self.types[month][tx_type] += 1
 
@@ -770,7 +782,11 @@ class BitcoinPublicKeyParser:
 
         keys_after = self.statistics["keys"]
         block_end_time = time.perf_counter()
-        self.logger.debug(f"Processed block {n} in {block_end_time - block_start_time} seconds. Speed: {int((keys_after - keys_before) / (block_end_time - block_start_time))} keys/sec. ")
+
+        #logger.debug(f"Processed block {n} in {block_end_time - block_start_time} seconds. Speed: {int((keys_after - keys_before) / (block_end_time - block_start_time))} keys/sec. ")
+        # When parsing a large range of blocks level of this debug message should be debug,
+        #   when parsing upon a new block - info.
+        logger.info(f"Processed block {n} in {block_end_time - block_start_time} seconds. Speed: {int((keys_after - keys_before) / (block_end_time - block_start_time))} keys/sec. ")
 
 
     def process_block_range(self, range_to_parse: range) -> None:
@@ -780,7 +796,7 @@ class BitcoinPublicKeyParser:
             self.flush_if_needed(n, False)
 
             if self.statistics["blocks"] % 10 == 0:
-                self.logger.info(f"Processed {self.statistics['blocks']} blocks. Last parsed block is {self.state['block']}.")
+                logger.info(f"Processed {self.statistics['blocks']} blocks. Last parsed block is {self.state['block']}.")
 
         self.flush_if_needed(n, True)
         self.print_statistics()
@@ -795,7 +811,7 @@ class BitcoinPublicKeyParser:
             range_to_parse = range(block_from + i, block_to, parser_count)
             new_process = Process(target=parser.process_block_range, args=(range_to_parse,))
             new_process.start()
-            parser.logger.info(f"Successfully started parsing range {range_to_parse} in process with pid {new_process.pid}.")
+            logger.info(f"Successfully started parsing range {range_to_parse} in process with pid {new_process.pid}.")
             processes.append(new_process)
 
         for process in processes:
@@ -803,7 +819,7 @@ class BitcoinPublicKeyParser:
 
 
     def process_upon_a_new_block(self, block_from: int, sleep_sec: int = 10, max_failure: int = 10) -> None:
-        self.logger.setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
         last_parsed_block = block_from
         fails = 0
 
@@ -812,7 +828,7 @@ class BitcoinPublicKeyParser:
                 block_tip = self.rpc.getblockcount()
 
             except Exception as e:
-                self.logger.exception("Something went wrong when calling RPC getblockcount.")
+                logger.exception("Something went wrong when calling RPC getblockcount.")
                 fails += 1
                 if max_failure != 0 and fails >= max_failure:
                     break
@@ -826,7 +842,7 @@ class BitcoinPublicKeyParser:
             last_parsed_block += 1
             self.flush_if_needed(last_parsed_block, True)
 
-        self.logger.critical("Exceeded maximum failure limit on RPC calls.")
+        logger.critical("Exceeded maximum failure limit on RPC calls.")
 
 
 if __name__ == "__main__":

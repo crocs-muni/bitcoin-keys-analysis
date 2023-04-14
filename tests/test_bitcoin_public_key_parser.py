@@ -4,6 +4,8 @@ import sys, os
 import configparser
 import json, copy, shutil
 
+os.environ["PYTEST_BITCOIN_PUBLIC_KEY_PARSER"] = "1"
+
 """
     Load config.
 """
@@ -38,7 +40,7 @@ sys.path.append(config["PATHS"]["src_dir"])
 from bitcoin_public_key_parser import BitcoinPublicKeyParser, BitcoinRPC
 
 rpc = BitcoinRPC()
-parser = BitcoinPublicKeyParser(rpc, "TEST_PATHS")
+parser = BitcoinPublicKeyParser(rpc)
 parser.set_verbosity(True)
 
 
@@ -902,3 +904,6 @@ def test_flush_to_disk(verbosity: bool, n: int):
 
         assert compare_dicts_to_disk(verbosity, temp_dicts, i)
         assert compare_lists_to_disk(temp_lists, i)
+
+
+os.environ["PYTEST_BITCOIN_PUBLIC_KEY_PARSER"] = "0"
